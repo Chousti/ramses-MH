@@ -19,6 +19,9 @@ module rtz_coolrates_module
   integer, parameter:: N_HIGH_T_COOLING_TEMP = 121
   real(dp):: high_t_cooling_temp(N_HIGH_T_COOLING_TEMP)
   real(dp):: high_t_cooling_rates(N_HIGH_T_COOLING_TEMP,27,27)
+  integer, parameter:: N_HIGH_T_COOLING_TEMP_CIE = 500
+  real(dp):: high_t_cooling_temp_CIE(N_HIGH_T_COOLING_TEMP_CIE)
+  real(dp):: high_t_cooling_fracs_CIE(N_HIGH_T_COOLING_TEMP_CIE,27,27)
   logical:: high_t_cooling_rates_tflag(27,27)
   real(dp):: fs_cool_tab(27,160,8)  ! Array for fine structure cooling rates  
 
@@ -590,6 +593,126 @@ SUBROUTINE initialize_high_temperature_metal_cooling()
     ! FeII
     high_t_cooling_rates_tflag(26,2) = .true.
 
+
+    ! Now we have to do the same thing, but load in the CIE data
+
+    ! Load temperatures
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/T_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high T CIE temperatures file'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_temp_CIE
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! CARBON
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/C_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling carbon CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,6,1:7)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! NITROGEN
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/N_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling nitrogen CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,7,1:8)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! OXYGEN
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/O_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling oxygen CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,8,1:9)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! NEON
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/Ne_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling neon CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,10,1:11)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! MAGNESIUM
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/Mg_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling oxygen CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,12,1:13)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! SILICON
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/Si_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling silicon CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,14,1:15)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! SULFUR
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/S_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling sulfur CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,16,1:17)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
+    ! IRON
+    open(newunit=unit_num, file='./data/high_T_cooling/CIE/Fe_CIE.txt', status='old', action='read', iostat=ios)
+    if (ios /= 0) then
+        write(*,*) 'Error: Could not open high temperature cooling iron CIE fracs'
+        return
+    end if
+
+    do i = 1, N_HIGH_T_COOLING_TEMP_CIE
+        read(unit_num, *, iostat=ios) high_t_cooling_fracs_CIE(i,26,1:27)
+        if (ios /= 0) exit
+    end do
+    close(unit_num)
+
 END SUBROUTINE initialize_high_temperature_metal_cooling
 
 FUNCTION get_high_t_cooling_rates(T, ne, element_number_densities, element_ion_fractions, temp_smooth) result(rate)
@@ -603,7 +726,8 @@ FUNCTION get_high_t_cooling_rates(T, ne, element_number_densities, element_ion_f
     real(dp):: rate
     real(dp):: loc_T, log_T, t_min, t_max, dt, t_scale_fac
     real(dp):: frac_high, frac_low, loc_cooling_rate, loc_temp_smooth
-    integer:: idx_low, i, j
+    integer:: idx_low, i, j, CIE_Tidx
+    real(dp):: CIE_frac_used, CIE_frac_theo
 
     loc_T = max(T,1000.d0)
     log_T = log10(loc_T)
@@ -618,16 +742,20 @@ FUNCTION get_high_t_cooling_rates(T, ne, element_number_densities, element_ion_f
         return
     end if
 
-    !// Still cool above 10^9 K but set a bound
+    ! Still cool above 10^9 K but set a bound
     if (log_T > t_max) then 
         log_T = t_max
     end if
 
-    !// Prepare for 1D interpolation
+    ! Prepare for 1D interpolation
     idx_low = floor((log_T - t_min)/dt) + 1
 
     frac_high = (log_T - high_t_cooling_temp(idx_low)) / (high_t_cooling_temp(idx_low+1) - high_t_cooling_temp(idx_low))
     frac_low = 1.0 - frac_high
+
+    ! Use NGP interpolation for CIE --> temperature spacing is very fine so ok
+    CIE_Tidx = 1 + NINT((log_T - LOG10(high_t_cooling_temp_CIE(1))) / (LOG10(high_t_cooling_temp_CIE(2)) - LOG10(high_t_cooling_temp_CIE(1))))
+    CIE_Tidx = MAX(MIN(CIE_Tidx,N_HIGH_T_COOLING_TEMP_CIE),1) ! Clamp
 
     ! Loop over all ions -- not including H and He
     do i = 3, 27
@@ -641,7 +769,8 @@ FUNCTION get_high_t_cooling_rates(T, ne, element_number_densities, element_ion_f
           cycle
        end if
 
-       do j = 1, elements(i)%n_ions
+       ! Loop over 1 fewer than n_ions to handle untracked ionization states if needed
+       do j = 1, elements(i)%n_ions - 1
           ! Interpolate the cooling rate for the ion
           loc_cooling_rate = frac_low * high_t_cooling_rates(idx_low,i,j)
           loc_cooling_rate = loc_cooling_rate + (frac_high * high_t_cooling_rates(idx_low+1,i,j)) 
@@ -653,11 +782,54 @@ FUNCTION get_high_t_cooling_rates(T, ne, element_number_densities, element_ion_f
               loc_temp_smooth = temp_smooth
           end if
 
-
          ! Multiply cooling rate by ion and electron number densities
          rate = rate + (element_number_densities(i) * element_ion_fractions(i,j) * ne * loc_cooling_rate * loc_temp_smooth)
 
        end do
+
+       ! Account for untracked ionization states here
+       if (elements(i)%n_ions .eq. elements(i)%atomic_number + 1) then
+          ! In this case, we are tracking all of the ions so nothing special needs to be donw
+          j = elements(i)%n_ions
+
+          ! Interpolate the cooling rate for the ion
+          loc_cooling_rate = frac_low * high_t_cooling_rates(idx_low,i,j)
+          loc_cooling_rate = loc_cooling_rate + (frac_high * high_t_cooling_rates(idx_low+1,i,j)) 
+          loc_cooling_rate = 10.d0**loc_cooling_rate
+
+          ! Smooth with temeprature if necessary
+          loc_temp_smooth = 1.d0
+          if (high_t_cooling_rates_tflag(i,j)) then
+              loc_temp_smooth = temp_smooth
+          end if
+
+         ! Multiply cooling rate by ion and electron number densities
+         rate = rate + (element_number_densities(i) * element_ion_fractions(i,j) * ne * loc_cooling_rate * loc_temp_smooth)
+       else
+         ! In this case we aren't tracking all of the ions so we need to pull the CIE data
+         CIE_frac_used = element_ion_fractions(i,elements(i)%n_ions) ! The CIE fractions should be rescaled by this value
+         CIE_frac_theo = SUM(high_t_cooling_fracs_CIE(CIE_Tidx,i,elements(i)%n_ions:elements(i)%atomic_number+1))
+
+         ! Now loop over all of the untracked fractions
+         do j = elements(i)%n_ions, elements(i)%atomic_number+1
+
+          ! Interpolate the cooling rate for the ion
+          loc_cooling_rate = frac_low * high_t_cooling_rates(idx_low,i,j)
+          loc_cooling_rate = loc_cooling_rate + (frac_high * high_t_cooling_rates(idx_low+1,i,j)) 
+          loc_cooling_rate = 10.d0**loc_cooling_rate
+
+          ! Smooth with temeprature if necessary
+          loc_temp_smooth = 1.d0
+          if (high_t_cooling_rates_tflag(i,j)) then
+              loc_temp_smooth = temp_smooth
+          end if
+
+          rate = rate + ((CIE_frac_used / CIE_frac_theo) * element_number_densities(i) * high_t_cooling_fracs_CIE(CIE_Tidx,i,j) * ne * loc_cooling_rate * loc_temp_smooth)
+         end do
+
+       endif
+
+
     end do
 
     rate = rate * t_scale_fac
