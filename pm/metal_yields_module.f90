@@ -64,26 +64,26 @@ FUNCTION get_portinari_ejecta_mass(metallicity, mass, species) result(fq)
   rescale_factor = 1.0 ! Rescale factor for metallicity and mass
 
   ! Enforce bounds
-  xq = MIN(MAX(metallicity,portinati_N_metal(1)),portinati_N_metal(portinati_N_metal))
-  yq = MIN(MAX(mass,portinati_N_mass(1)),portinati_N_mass(portinati_N_mass))
+  xq = MIN(MAX(metallicity,portinati_metal(1)),portinati_metal(portinati_N_metal))
+  yq = MIN(MAX(mass,portinati_mass(1)),portinati_mass(portinati_N_mass))
 
   ! Downweight the yields if we are below lower limits --> do not extrapolate in the case where we are above!
-  if (metallicity.lt.portinati_N_metal(1)) then
-     rescale_factor = rescale_factor * (metallicity / portinati_N_metal(1))
+  if (metallicity.lt.portinati_metal(1)) then
+     rescale_factor = rescale_factor * (metallicity / portinati_metal(1))
   endif
 
-  if (mass.lt.portinati_N_mass(1)) then
-     rescale_factor = rescale_factor * (mass / portinati_N_mass(1))
+  if (mass.lt.portinati_mass(1)) then
+     rescale_factor = rescale_factor * (mass / portinati_mass(1))
   endif
 
   ! Find i such that x(i) <= xq <= x(i+1)
   do i = 1, portinati_N_metal-1
-    if (xq.ge.portinati_N_metal(i) .and. xq.le.portinati_N_metal(i+1)) exit
+    if (xq.ge.portinati_metal(i) .and. xq.le.portinati_metal(i+1)) exit
   end do
 
   ! Find j such that y(j) <= yq <= y(j+1)
   do j = 1, portinati_N_mass-1
-    if (yq.ge.portinati_N_mass(j) .and. yq.le.portinati_N_mass(j+1)) exit
+    if (yq.ge.portinati_mass(j) .and. yq.le.portinati_mass(j+1)) exit
   end do
 
   ! Rescale factors from Appendix A3 of https://articles.adsabs.harvard.edu/pdf/2009MNRAS.399..574W
@@ -119,8 +119,8 @@ FUNCTION get_portinari_ejecta_mass(metallicity, mass, species) result(fq)
   end select
 
   ! Extract corner values
-  x1 = portinati_N_metal(i);   x2 = portinati_N_metal(i+1)
-  y1 = portinati_N_mass(j);   y2 = portinati_N_mass(j+1)
+  x1 = portinati_metal(i);   x2 = portinati_metal(i+1)
+  y1 = portinati_mass(j);   y2 = portinati_mass(j+1)
 
   f11 = portinati_yields(i, j, element_idx)
   f21 = portinati_yields(i+1, j, element_idx)
@@ -131,11 +131,11 @@ FUNCTION get_portinari_ejecta_mass(metallicity, mass, species) result(fq)
   dy = y2 - y1
 
   ! Bilinear interpolation
-  fq = (1.0 / (dx * dy)) * (
-        f11 * (x2 - xq) * (y2 - yq) +
-        f21 * (xq - x1) * (y2 - yq) +
-        f12 * (x2 - xq) * (yq - y1) +
-        f22 * (xq - x1) * (yq - y1)
+  fq = (1.0 / (dx * dy)) * ( &
+        f11 * (x2 - xq) * (y2 - yq) + &
+        f21 * (xq - x1) * (y2 - yq) + &
+        f12 * (x2 - xq) * (yq - y1) + &
+        f22 * (xq - x1) * (yq - y1)   &
        ) * rescale_factor
 END FUNCTION get_portinari_ejecta_mass
 
