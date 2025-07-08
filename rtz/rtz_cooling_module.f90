@@ -493,7 +493,7 @@ contains
     integer:: atomic_number, n_ions, i_other_Element, i_other_Ion, i_current_Element
     integer:: i_current_Ion
     real(dp):: Zsolar, total_G0
-    real(dp):: alpha_H2_loc, beta_H2_loc, cr_H2, de_H2, xH2_loc, f_shd
+    real(dp):: alpha_H2_loc, beta_H2_loc, cr_H2, de_H2, xH2_loc, f_shd, f_shd_CO
     real(dp):: nElement_dep(n_elements)
 #ifdef CO
     real(dp):: cr_CO, de_CO, delta_CO, max_delta_CO, min_delta_CO
@@ -535,8 +535,12 @@ contains
 #endif
 
     f_shd = 1.d0
+    f_shd_CO = 1.d0
     if (isH2_rtz) then
        f_shd = comp_SH2(nElement_dep(1)*dXion(1,3), dx_SS_H2) * comp_Sd(nElement_dep(1)*dXion(1,1), nElement_dep(1)*dXion(1,3), dx_SS_H2, dust_to_gas_mass_ratio_over_mw)
+    end if
+    if (isCO_rtz) then
+       f_shd_CO = comp_SCO(nCO(icell), nElement_dep(1)*dXion(1,3), dx_SS_H2)
     end if
 
 #ifdef RT
@@ -869,7 +873,7 @@ contains
        cr_CO = alpha_CO(total_G0, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI)
 
        !! Destruction !!
-       de_CO = beta_CO(total_G0, H2_cosmic_ray_ionization_rate)
+       de_CO = beta_CO(total_G0*f_shd_CO, H2_cosmic_ray_ionization_rate)
 
        ! Compute the initial guess of new nCO
        nCO_new = (nCO(icell) + cr_CO*ddt(icell)) / (1.d0 + de_CO*ddt(icell))

@@ -5,7 +5,10 @@ module molecules_module
 
   private  ! everything is private by default
   public :: alpha_H2, beta_H2_umist, beta_H2, beta_H2_krome, alpha_CO, beta_CO, alpha_H2_prim, alpha_H2_dust
-  public :: comp_SH2, comp_Sd
+  public :: comp_SH2, comp_Sd, comp_SCO, initialize_SCO_table
+
+  real(dp), dimension(52, 2):: sco_table ! self shielding coefficient vs. CO column density
+  real(dp), dimension(43, 2):: sh2_table ! self shielding coefficient vs. H2 column density
 
 CONTAINS
 
@@ -289,5 +292,112 @@ FUNCTION comp_SH2(nH2, dx_SS) result(ss_factor)
 
   ss_factor = Sa + (Sb*Sc)
 END FUNCTION comp_SH2
+
+SUBROUTINE initialize_SCO_table()
+  implicit none
+
+  sco_table(:,1) = (/ &
+  1.000d+00, 1.000d+12, 1.650d+12, 2.995d+12, 5.979d+12, 1.313d+13, &
+  3.172d+13, 8.429d+13, 2.464d+14, 7.923d+14, 1.670d+15, 2.595d+15, &
+  4.435d+15, 6.008d+15, 8.952d+15, 1.334d+16, 1.661d+16, 2.274d+16, &
+  3.115d+16, 4.266d+16, 5.843d+16, 8.002d+16, 1.096d+17, 1.501d+17, &
+  2.055d+17, 2.815d+17, 4.241d+17, 6.389d+17, 9.625d+17, 1.450d+18, &
+  2.184d+18, 3.291d+18, 4.124d+18, 5.685d+18, 7.838d+18, 1.080d+19, &
+  1.285d+19, 1.681d+19, 2.199d+19, 2.538d+19, 3.222d+19, 4.091d+19, &
+  5.193d+19, 5.893d+19, 7.356d+19, 8.269d+19, 9.246d+19, 1.031d+20, &
+  1.148d+20, 1.277d+20, 1.419d+20, 1.578d+20 /)
+
+  sco_table(:,2) = (/ &
+  1.000d+00, 9.990d-01, 9.981d-01, 9.961d-01, 9.912d-01, 9.815d-01, &
+  9.601d-01, 9.113d-01, 8.094d-01, 6.284d-01, 4.808d-01, 3.889d-01, &
+  2.827d-01, 2.293d-01, 1.695d-01, 1.224d-01, 1.017d-01, 7.764d-02, &
+  5.931d-02, 4.546d-02, 3.506d-02, 2.728d-02, 2.143d-02, 1.700d-02, &
+  1.360d-02, 1.094d-02, 8.273d-03, 6.283d-03, 4.773d-03, 3.611d-03, &
+  2.704d-03, 1.986d-03, 1.657d-03, 1.258d-03, 9.332d-04, 6.745d-04, &
+  5.596d-04, 4.123d-04, 2.982d-04, 2.490d-04, 1.827d-04, 1.324d-04, &
+  9.473d-05, 7.891d-05, 5.668d-05, 4.732d-05, 3.967d-05, 3.327d-05, &
+  2.788d-05, 2.331d-05, 1.944d-05, 1.619d-05 /)
+
+  sh2_table(:,1) = (/ &
+  1.000d+00, 2.666d+13, 3.801d+14, 6.634d+15, 8.829d+16, 9.268d+17, &
+  1.007d+18, 2.021d+18, 3.036d+18, 4.051d+18, 5.066d+18, 6.082d+18, &
+  7.097d+18, 8.112d+18, 9.341d+18, 1.014d+19, 2.030d+19, 3.045d+19, &
+  4.061d+19, 5.076d+19, 6.092d+19, 7.107d+19, 8.123d+19, 9.353d+19, &
+  1.015d+20, 2.031d+20, 3.047d+20, 4.062d+20, 5.078d+20, 6.094d+20, &
+  7.109d+20, 8.125d+20, 9.355d+20, 1.016d+21, 2.031d+21, 3.047d+21, &
+  4.063d+21, 5.078d+21, 6.094d+21, 7.110d+21, 8.125d+21, 9.355d+21, &
+  1.016d+22 /) 
+
+  sh2_table(:,2) = (/ &
+  1.000d+00, 9.999d-01, 9.893d-01, 9.678d-01, 9.465d-01, 9.137d-01, &
+  9.121d-01, 8.966d-01, 8.862d-01, 8.781d-01, 8.716d-01, 8.660d-01, &
+  8.612d-01, 8.569d-01, 8.524d-01, 8.497d-01, 8.262d-01, 8.118d-01, &
+  8.011d-01, 7.921d-01, 7.841d-01, 7.769d-01, 7.702d-01, 7.626d-01, &
+  7.579d-01, 7.094d-01, 6.712d-01, 6.378d-01, 6.074d-01, 5.791d-01, &
+  5.524d-01, 5.271d-01, 4.977d-01, 4.793d-01, 2.837d-01, 1.526d-01, &
+  7.774d-02, 3.952d-02, 2.093d-02, 1.199d-02, 7.666d-03, 5.333d-03, &
+  4.666d-03 /) 
+
+END SUBROUTINE initialize_SCO_table
+
+FUNCTION comp_SCO(nco_mol, nh2, dx_SS) result(ss_factor)
+  ! Returns the self shielding factor for CO
+  implicit none
+  real(dp), intent(in):: nco_mol, nh2, dx_SS
+  real(dp):: ss_factor
+  real(dp):: logsCO, effcNCO, logeffcNCO
+  real(dp):: logsH2, effcNH2, logeffcNH2
+  integer:: i, idxCO, idxH2 ! Lower closest index
+
+  ! initialize to 1.0
+  ss_factor = 1.d0
+
+  ! Pinned to table at lower boundary, extrapolated above upper boundary
+  effcNCO = MAX(nco_mol*dx_SS, sco_table(1,1))
+  if (effcNCO.ge.1.578d+20) then 
+     ss_factor = ss_factor * 1.619d-05
+  else
+     ! Find the lower closest index
+     idxCO = 1
+     do i=1, 51 ! If above upper boundary then extrapolate using the slope 
+        !between the last two points, so conveniently we set i to not go to 52
+        if (effcNCO .ge. sco_table(i,1)) idxCO = i
+     end do
+
+     logeffcNCO = log10(effcNCO)
+     ! Interpolate or extrapolate automatically
+     logsCO = log10(sco_table(idxCO,2)) &
+     + (log10(sco_table(idxCO+1,2)) - log10(sco_table(idxCO,2))) &
+     * (logeffcNCO - log10(sco_table(idxCO,1))) &
+     / (log10(sco_table(idxCO+1,1)) - log10(sco_table(idxCO,1)))
+
+     ss_factor = ss_factor * (10.d0 ** logsCO)
+  end if
+
+
+  ! Pinned to table at lower boundary, extrapolated above upper boundary
+  effcNH2 = MAX(nh2*dx_SS, sco_table(1,1))
+  if (effcNH2.ge.1.016d+22) then 
+      ss_factor = ss_factor * 4.666d-03
+  else 
+      ! Find the lower closest index
+      idxH2 = 1
+      do i=1, 43 ! If above upper boundary then extrapolate using the slope 
+        !between the last two points, so conveniently we set i to not go to 52
+        if (effcNH2 .ge. sh2_table(i,1)) idxH2 = i
+      end do
+
+      logeffcNH2 = log10(effcNH2)
+      ! Interpolate or extrapolate automatically
+      logsH2 = log10(sh2_table(idxH2,2)) &
+      + (log10(sh2_table(idxH2+1,2)) - log10(sh2_table(idxH2,2))) &
+      * (logeffcNH2 - log10(sh2_table(idxH2,1))) &
+      / (log10(sh2_table(idxH2+1,1)) - log10(sh2_table(idxH2,1)))
+
+      ss_factor = ss_factor * (10.d0 ** logsH2)
+  end if
+
+END FUNCTION comp_SCO
+
 
 end module molecules_module
