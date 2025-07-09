@@ -41,7 +41,7 @@ ATON = 0
 # Number of photon groups for RT
 NGROUPS = 1
 # Number of passive scalars
-NPSCAL = 0
+NPSCAL = 1
 # Light MPI communicator structure (for > 10k MPI processes)
 LIGHT_MPI_COMM = 0
 
@@ -49,7 +49,7 @@ LIGHT_MPI_COMM = 0
 N_HYDROGEN_IONS = 2
 N_H2 = 1
 N_HELIUM_IONS = 3
-N_CARBON_IONS = 7
+N_CARBON_IONS = 6
 N_NITROGEN_IONS = 6
 N_OXYGEN_IONS = 6
 N_NEON_IONS = 6
@@ -155,7 +155,7 @@ ifeq ($(COMPILER),GNU)
    else
       ifeq ($(DEBUG),1)
          F90 += -g -O0 -fbacktrace -fbounds-check -Wuninitialized -Wall
-         FFLAGS += -ffpe-trap=zero,underflow,overflow,invalid -finit-real=nan
+	 #FFLAGS += -ffpe-trap=zero,underflow,overflow,invalid -finit-real=nan
       else
          F90 += -O3
       endif
@@ -174,8 +174,8 @@ ifeq ($(COMPILER),INTEL)
       FC = ifort
       FFLAGS += -DWITHOUTMPI
    endif
-   F90 += -fp-model source
-   FC += -fp-model source
+   F90 += -fp-model fast=2
+   FC += -fp-model fast=2
    ifeq ($(DEBUG),1)
       F90 += -warn all -O0 -g -traceback -check bounds
       FFLAGS += -fpe0 -ftrapuv -init=zero -init=snan -init=arrays
@@ -221,7 +221,7 @@ VPATH += ../hydro:../pm:../poisson:../amr:../io
 #############################################################################
 # All objects
 MODOBJ = mpi_mod.o amr_parameters.o amr_commons.o amr_constants.o random.o pm_parameters.o sink_feedback_parameters.o \
-         pm_commons.o poisson_parameters.o collapse_parameters.o dump_utils.o constants.o safe_math.o file_module.o
+         pm_commons.o poisson_parameters.o collapse_parameters.o dump_utils.o constants.o safe_math_module.o file_module.o
 ifeq ($(GRACKLE),1)
    MODOBJ += grackle_parameters.o
 endif

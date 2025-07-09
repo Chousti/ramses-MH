@@ -862,76 +862,78 @@ contains
     de_CO = 0.d0
     dUU = 0.d0
     if (isCO_rtz) then
-       n_C_og = n_CII + nCO(icell)
-       n_O_og = n_OI + nCO(icell)
-       n_CII = nElement_dep(6) * dXion(6,2)
-       n_OI  = nElement_dep(8) * dXion(8,1)
-       n_H2  = 0.5d0 * nElement_dep(1) * dXion(1,3)
-       x_OI  = n_OI / nElement_dep(1)
+       if ((nElement_dep(6) + nElement_dep(8) + nCO(icell))/nElement_dep(1).gt.1d-10) then 
+         n_C_og = n_CII + nCO(icell)
+         n_O_og = n_OI + nCO(icell)
+         n_CII = nElement_dep(6) * dXion(6,2)
+         n_OI  = nElement_dep(8) * dXion(8,1)
+         n_H2  = 0.5d0 * nElement_dep(1) * dXion(1,3)
+         x_OI  = n_OI / nElement_dep(1)
 
-       !! Creation !!
-       cr_CO = alpha_CO(total_G0, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI)
+         !! Creation !!
+         cr_CO = alpha_CO(total_G0, H2_cosmic_ray_ionization_rate, n_CII, n_H2, x_OI)
 
-       !! Destruction !!
-       de_CO = beta_CO(total_G0*f_shd_CO, H2_cosmic_ray_ionization_rate)
+         !! Destruction !!
+         de_CO = beta_CO(total_G0*f_shd_CO, H2_cosmic_ray_ionization_rate)
 
-       ! Compute the initial guess of new nCO
-       nCO_new = (nCO(icell) + cr_CO*ddt(icell)) / (1.d0 + de_CO*ddt(icell))
+         ! Compute the initial guess of new nCO
+         nCO_new = (nCO(icell) + cr_CO*ddt(icell)) / (1.d0 + de_CO*ddt(icell))
 
-       ! Tentative update
-       delta_CO = nCO_new - nCO(icell)
+         ! Tentative update
+         delta_CO = nCO_new - nCO(icell)
 
-       ! Enforce positivity floors: don't destroy more CO than exists,
-       ! and don't create more than allowed by available CII and OI
-       max_delta_CO = min(n_CII - 1.d-30, n_OI - 1.d-30)
-       min_delta_CO = -nCO(icell) + 1.d-30       
+         ! Enforce positivity floors: don't destroy more CO than exists,
+         ! and don't create more than allowed by available CII and OI
+         max_delta_CO = min(n_CII - 1.d-30, n_OI - 1.d-30)
+         min_delta_CO = -nCO(icell) + 1.d-30       
 
-       ! Clip delta_CO to enforce physical bounds
-       delta_CO = max(min(delta_CO, max_delta_CO), min_delta_CO)
+         ! Clip delta_CO to enforce physical bounds
+         delta_CO = max(min(delta_CO, max_delta_CO), min_delta_CO)
 
-       ! Apply updates
-       nCO_new  = nCO(icell) + delta_CO
-       nCII_new = n_CII - delta_CO
-       nOI_new  = n_OI  - delta_CO
+         ! Apply updates
+         nCO_new  = nCO(icell) + delta_CO
+         nCII_new = n_CII - delta_CO
+         nOI_new  = n_OI  - delta_CO
 
-       ! Now update the ion fractions for C and O
-       tot_C = sum(nElement_dep(6) * dXion(6,1:elements(6)%n_ions)) - n_CII
-       tot_C = tot_C + nCII_new
-       do iIon = 1, elements(6)%n_ions
-          if (iIon.ne.2) then 
-             dXion(6,iIon) = nElement_dep(6) * dXion(6,iIon) / tot_C
-          else
-             dXion(6,iIon) = nCII_new / tot_C
-          end if
-       end do
+         ! Now update the ion fractions for C and O
+         tot_C = sum(nElement_dep(6) * dXion(6,1:elements(6)%n_ions)) - n_CII
+         tot_C = tot_C + nCII_new
+         do iIon = 1, elements(6)%n_ions
+            if (iIon.ne.2) then 
+               dXion(6,iIon) = nElement_dep(6) * dXion(6,iIon) / tot_C
+            else
+               dXion(6,iIon) = nCII_new / tot_C
+            end if
+         end do
 
-       tot_O = sum(nElement_dep(8) * dXion(8,1:elements(8)%n_ions)) - n_OI
-       tot_O = tot_O + nOI_new
-       do iIon = 1, elements(8)%n_ions
-          if (iIon.ne.1) then 
-             dXion(8,iIon) = nElement_dep(8) * dXion(8,iIon) / tot_O
-          else
-             dXion(8,iIon) = nOI_new / tot_O
-          end if
-       end do
+         tot_O = sum(nElement_dep(8) * dXion(8,1:elements(8)%n_ions)) - n_OI
+         tot_O = tot_O + nOI_new
+         do iIon = 1, elements(8)%n_ions
+            if (iIon.ne.1) then 
+               dXion(8,iIon) = nElement_dep(8) * dXion(8,iIon) / tot_O
+            else
+               dXion(8,iIon) = nOI_new / tot_O
+            end if
+         end do
 
-       ! Check for convergence
-       dUU = MAX(dUU,ABS((nCO_new-nCO(icell))/(nCO(icell)+x_FM)))
-       dUU = dUU * one_over_x_FRAC
-       fracMax=MAX(fracMax,dUU)
-       if(dUU .gt. 1.d0) then
-         !  write(*,*) "Broken CO", TK, nCO_new, nCO, ABS((nCO_new-nCO(icell))/(nCO(icell)+x_FM))
-          dt_rec = 0.9d0 * ddt(icell) / sqrt(2.d0+fracMax)
-          code=6 !TODO(code) update this code for each ion
-          RETURN
+         ! Check for convergence
+         dUU = MAX(dUU,ABS((nCO_new-nCO(icell))/(nCO(icell)+x_FM)))
+         dUU = dUU * one_over_x_FRAC
+         fracMax=MAX(fracMax,dUU)
+         if(dUU .gt. 1.d0) then
+            !  write(*,*) "Broken CO", TK, nCO_new, nCO, ABS((nCO_new-nCO(icell))/(nCO(icell)+x_FM))
+            dt_rec = 0.9d0 * ddt(icell) / sqrt(2.d0+fracMax)
+            code=6 !TODO(code) update this code for each ion
+            RETURN
+         end if
+
+         ! Update species number densities --> need to fix this in case other species fail
+         dCO = nCO_new
+         dnElement(6) = dnElement(6) - delta_CO
+         nElement_dep(6) = nElement_dep(6) - delta_CO
+         dnElement(8) = dnElement(8) - delta_CO
+         nElement_dep(8) = nElement_dep(8) - delta_CO
        end if
-
-       ! Update species number densities --> need to fix this in case other species fail
-       dCO = nCO_new
-       dnElement(6) = dnElement(6) - delta_CO
-       nElement_dep(6) = nElement_dep(6) - delta_CO
-       dnElement(8) = dnElement(8) - delta_CO
-       nElement_dep(8) = nElement_dep(8) - delta_CO
     end if
 #endif
 
@@ -945,6 +947,9 @@ contains
     ! Loop over all elements
     do iElement = 1,n_elements
        if (elements(iElement)%atomic_number > 0) then
+          if (nElement_dep(iElement)/nElement_dep(1).le.1e-10) then
+             cycle
+          end if
 
           ! Get the atomic number
           atomic_number = elements(iElement)%atomic_number
@@ -1110,6 +1115,7 @@ contains
                 end if
              end if
 #endif
+
              !/////////////////////////
              !//   Charge Transfer   //
              !/////////////////////////

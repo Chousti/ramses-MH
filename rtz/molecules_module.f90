@@ -1,6 +1,7 @@
 ! molecules_module.f90
 module molecules_module
   use amr_parameters, only: dp
+  use safe_math, only: safe_exp
   implicit none
 
   private  ! everything is private by default
@@ -51,19 +52,19 @@ FUNCTION alpha_H2_prim(T, xe, H2_cosmic_ray_ionization_rate, G0, xHI, xHII) resu
   k13 = -1.801849334d1 + 2.36085220d0*lnTe - 2.82744300d-1*(lnTe**2.d0) &
                  +1.62331664d-2*(lnTe**3.d0)-3.36501203d-2*(lnTe**4.d0)+1.17832978d-2*(lnTe**5.) &
                  -1.65619470d-3*(lnTe**6.d0)+1.06827520d-4*(lnTe**7.d0)-2.63128581d-6*(lnTe**8.)
-  k13 = exp(max(k13,-92.d0)) ! Max needed to prevent result from diverging at low temperature
+  k13 = safe_exp(max(k13,-92.d0)) ! Max needed to prevent result from diverging at low temperature
 
   ! H- + H --> H + H + e-
   ! I think this reaction was broken in glover so I took the results from
   ! https://www.aanda.org/articles/aa/pdf/2016/02/aa27262-15.pdf Table A1
   ! Harley added the fudge factor for continuity
-  k14 = 1.357772745525155d0 * 2.5634d-15 * (exp(lnTe)**1.78186d0) ! Note that T must be in eV for this reaction to make sense
+  k14 = 1.357772745525155d0 * 2.5634d-15 * (safe_exp(lnTe)**1.78186d0) ! Note that T must be in eV for this reaction to make sense
   if (T .gt. 1160.d0) then
      k14 = -3.388464953d1 + 1.13944933d0*lnTe - 1.4210135d-1*(lnTe**2.d0) &
             + 8.4644554d-3*(lnTe**3.d0) - 1.4328641d-3*(lnTe**4.d0) + 2.0122503d-4*(lnTe**5.d0) &
             + 8.6639632d-5*(lnTe**6.d0) - 2.5850097d-5*(lnTe**7.d0) + 2.4555012d-6*(lnTe**8.d0) &
             - 8.0683825d-8*(lnTe**9.d0)
-     k14 = exp(k14)
+     k14 = safe_exp(k14)
   end if
 
   ! H- + H+ --> H2+ + e- --> H + H (via recombinative dissociation)
@@ -73,6 +74,8 @@ FUNCTION alpha_H2_prim(T, xe, H2_cosmic_ray_ionization_rate, G0, xHI, xHII) resu
   end if
 
   rate = rate + k1*k2*xe/(k2 + k5*xHII + k_hm_cr + k_hm_gamma + k13*xe + k14*xHI + k15*xHII)
+
+  rate = MAX(rate,1.d-100)
 
 END FUNCTION alpha_H2_prim
 
@@ -87,6 +90,8 @@ FUNCTION alpha_H2_dust(T, dust_to_gas_mass_ratio_over_mw) result(rate)
   clumping_factor = 1.d0
   T2 = T / 100.d0
   rate = dust_to_gas_mass_ratio_over_mw * (3.5d-17) * clumping_factor * sqrt(min(T2,1.d2))
+
+  rate = MAX(rate,1.d-100)
 
 END FUNCTION alpha_H2_dust
 
@@ -108,6 +113,8 @@ FUNCTION alpha_H2(T, dust_to_gas_mass_ratio_over_mw, xe, H2_cosmic_ray_ionizatio
   ! Primordial H- channel
   rate = rate + alpha_H2_prim(T, xe, H2_cosmic_ray_ionization_rate, G0, xHI, xHII) * xHI * nH
 
+  rate = MAX(rate,1.d-100)
+
 END FUNCTION alpha_H2
 
 FUNCTION beta_H2_umist(T, nH, ne, nH2) result(rate)
@@ -122,15 +129,17 @@ FUNCTION beta_H2_umist(T, nH, ne, nH2) result(rate)
 
   !H2 + H2 --> H2 + H + H 
   T_loc = max(min(T,41000.d0),2803.d0)
-  rate = rate + (1.00d-8 * ((T_loc/300d0)**0.0d0) * exp(-84100.d0/T_loc) * nH2)
+  rate = rate + (1.00d-8 * ((T_loc/300d0)**0.0d0) * safe_exp(-84100.d0/T_loc) * nH2)
 
   !H2 + e- --> H + H + e-
   T_loc = max(min(T,41000.d0),3400.d0)
-  rate = rate + (3.22d-9 * ((T_loc/300d0)**0.35d0) * exp(-102000.d0/T_loc) * ne)
+  rate = rate + (3.22d-9 * ((T_loc/300d0)**0.35d0) * safe_exp(-102000.d0/T_loc) * ne)
 
   !H2 + H --> H + H + H
   T_loc = max(min(T,41000.d0),1833.d0)
-  rate = rate + (4.67d-7 * ((T_loc/300d0)**(-1.d0)) * exp(-55000.d0/T_loc) * nH)
+  rate = rate + (4.67d-7 * ((T_loc/300d0)**(-1.d0)) * safe_exp(-55000.d0/T_loc) * nH)
+
+  rate = MAX(rate,1.d-100)
 
 END FUNCTION beta_H2_umist
 
@@ -144,16 +153,18 @@ FUNCTION beta_H2_krome(T, nH, ne, nH2, nHe) result(rate)
   rate = 0.d0
 
   ! H2 + H --> H + H + H (k18)
-  rate = rate + ((6.67d-12 * sqrt(T) * exp(-1.d0 * (1.d0 + (63593.d0/T)))) * nH)
+  rate = rate + ((6.67d-12 * sqrt(T) * safe_exp(-1.d0 * (1.d0 + (63593.d0/T)))) * nH)
 
   ! H2 + H2 --> H2 + H + H (k19)
-  rate = rate + ((5.996d-30 * (T**4.1881d0) * ((1.d0 + (6.761d0 * T))**(-5.6881d0)) * exp(-54657.4d0/T)) * nH2)
+  rate = rate + ((5.996d-30 * (T**4.1881d0) * ((1.d0 + (6.761d0 * T))**(-5.6881d0)) * safe_exp(-54657.4d0/T)) * nH2)
 
   ! H2 + e- --> H + H + e- (k22)
-  rate = rate + (4.38d-10 * (T**0.35d0) * exp(-102000.d0/T) * ne)
+  rate = rate + (4.38d-10 * (T**0.35d0) * safe_exp(-102000.d0/T) * ne)
 
   ! H2 + He --> H + H + He
   rate = rate + ((10.d0**(-27.029d0 + (3.801d0 * log10(T)) - (29487.d0/T))) * nHe)
+
+  rate = MAX(rate,1.d-100)
 
 END FUNCTION beta_H2_krome
 
@@ -191,15 +202,15 @@ FUNCTION beta_H2(T, nH, xHI, xH2, xHe, ne, nHI, nH2, nHeI) result(rate)
 
   !reaction rates from the appendix:
   !H2 + e- --> H + H + e-
-  k8 = 3.73d-9 * (T**0.1121d0) * exp(-99430.d0/T) ! Glover et al. (2010)
+  k8 = 3.73d-9 * (T**0.1121d0) * safe_exp(-99430.d0/T) ! Glover et al. (2010)
 
   !H2 + H --> H + H + H
-  k9 = (6.67d-12)*sqrt(T)*exp(-1.d0*(1.d0 + (63593.d0/T)))
-  k9L = (3.52d-9)*exp(-43900.d0/T)
+  k9 = (6.67d-12)*sqrt(T)*safe_exp(-1.d0*(1.d0 + (63593.d0/T)))
+  k9L = (3.52d-9)*safe_exp(-43900.d0/T)
 
   !H2 + H2 --> H2 + H + H
-  k10 = ( (5.996d-30*(T**4.1881d0)) / ((1.d0 + 6.761d-6*T)**5.6881d0)) * exp(-54657.4d0/T)
-  k10L = (1.3d-9)*exp(-53300.d0/T)
+  k10 = ( (5.996d-30*(T**4.1881d0)) / ((1.d0 + 6.761d-6*T)**5.6881d0)) * safe_exp(-54657.4d0/T)
+  k10L = (1.3d-9)*safe_exp(-53300.d0/T)
 
   !H2 + He --> H + H + He
   k11 = 10.d0**(-27.029d0 + (3.801d0*log10(T)) - (29487.d0/T))
@@ -222,6 +233,8 @@ FUNCTION beta_H2(T, nH, xHI, xH2, xHe, ne, nHI, nH2, nHeI) result(rate)
   rate = (ne*(10.d0**lk8)) + (nHI*(10.d0**lk9)) + (nH2*(10.d0**lk10)) + (nHeI*(10.0**lk11))
   rate = max(rate, 1d-40)
 
+  rate = MAX(rate,1.d-100)
+
 END FUNCTION beta_H2
 
 FUNCTION alpha_CO(G0, xi_cr_H2, nCII, nH2, xO) result(rate)
@@ -242,6 +255,8 @@ FUNCTION alpha_CO(G0, xi_cr_H2, nCII, nH2, xO) result(rate)
   beta = k1 * xO/(k1*xO + gammaCHx/nH2)
   rate = k0 * nCII * nH2 * beta
 
+  rate = MAX(rate,1.d-100)
+
 END FUNCTION alpha_CO
 
 FUNCTION beta_CO(G0, xi_cr_H2) result(rate)
@@ -257,6 +272,8 @@ FUNCTION beta_CO(G0, xi_cr_H2) result(rate)
 
   rate = gammaCO + gammaCO_cr
 
+  rate = MAX(rate,1.d-100)
+
 END FUNCTION beta_CO
 
 FUNCTION comp_Sd(nHI, nH2, dx_SS, Z) result(ss_factor)
@@ -271,7 +288,7 @@ FUNCTION comp_Sd(nHI, nH2, dx_SS, Z) result(ss_factor)
   cNHI = nHI*dx_SS    ! HI column density
   cNH2 = nH2*dx_SS    ! H2 column density
 
-  ss_factor = exp(-Sdeff*Z*(cNHI + (2.d0*cNH2)))
+  ss_factor = safe_exp(-Sdeff*Z*(cNHI + (2.d0*cNH2)))
 END FUNCTION comp_Sd
 
 FUNCTION comp_SH2(nH2, dx_SS) result(ss_factor)
@@ -288,7 +305,7 @@ FUNCTION comp_SH2(nH2, dx_SS) result(ss_factor)
 
   Sa = (1.d0 - wH2)/((1.d0 + xfac)*(1.d0 + xfac))
   Sb = wH2/sqrt(1.d0 + xfac)
-  Sc = exp(-0.00085d0*sqrt(1.d0 + xfac))
+  Sc = safe_exp(-0.00085d0*sqrt(1.d0 + xfac))
 
   ss_factor = Sa + (Sb*Sc)
 END FUNCTION comp_SH2
