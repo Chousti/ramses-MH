@@ -26,9 +26,10 @@ module pm_parameters
                                              ! used also as contraction timescale in creation
   real(dp)::cont_speed=0                     ! Clump contraction rate
 
-  character(LEN=15)::accretion_scheme='none' ! Sink accretion scheme; options: 'none', 'bondi', 'threshold'
+  character(LEN=15)::accretion_scheme='none' ! Sink accretion scheme; options: 'none', 'bondi', 'threshold', 'flux'
   logical::threshold_accretion=.false.       ! NOT A NAMELIST PARAMETER
   logical::bondi_accretion=.false.           ! NOT A NAMELIST PARAMETER
+  logical::flux_accretion=.false.           ! NOT A NAMELIST PARAMETER
   logical::bondi_use_vrel=.true.             ! Use v_rel^2 in the denominator of Bondi formula
   real(dp)::c_acc=0.75                       ! "courant factor" for sink accretion
                                              ! gives fraction of available gas that can be accreted in one timestep
@@ -62,6 +63,7 @@ module pm_parameters
   real(dp)::mass_star_AGN=0d0               ! Minimum mass of stars in the clump for sink creation
 
   real(dp)::boost_threshold_density=0.1d0   ! Accretion boost threshold for Bondi
+  logical::use_bondi_correction=.false.     ! Whether to switch to bondi when sonic radius is not resolved (Kang+2025)
 
   real(dp)::max_mass_nsc=1d15               ! Maximum mass of the Nuclear Star Cluster (msink)
 
