@@ -100,6 +100,7 @@ module pm_parameters
   real(dp) :: imf_m2 = 300.d0
   real(dp) :: imf_a1 = -1.3d0
   real(dp) :: imf_a2 = -2.7d0
+  integer :: uniform_rand_seed = 42 
 #endif 
 
 end module pm_parameters
