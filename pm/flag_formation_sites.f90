@@ -10,7 +10,7 @@ subroutine flag_formation_sites
   use hydro_commons, only:uold
   use hydro_parameters, only:smallr
   use pm_parameters, only:mass_halo_AGN,mass_clump_AGN,nlevelmax_sink
-  use constants, only: pi, twopi, M_sun
+  use constants, only: pi, twopi, M_sun, mH
   use mpi_mod
   implicit none
 #ifndef WITHOUTMPI
@@ -181,6 +181,9 @@ subroutine flag_formation_sites
         ok=ok.and.occupied(jj)==0
         ! Peak has to be dense enough
         ok=ok.and.max_dens(jj)>d_sink
+#ifdef INDIVIDUAL_SINK_STARS
+        ok=ok.and.max_dens(jj)>n_sink * mH / scale_d
+#endif
         ! Clump has to be massive enough
         ok=ok.and.clump_mass4(jj)>mass_sink_seed*M_sun/(scale_d*scale_l**3)
 !!$        ! Clump has to be contracting

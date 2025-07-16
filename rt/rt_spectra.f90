@@ -250,6 +250,9 @@ MODULE SED_module
 #ifdef RTZ
   PUBLIC initialize_cross_sections_from_blackbody &
         ,initialize_group_energies_from_blackbody
+#ifdef INDIVIDUAL_SINK_STARS
+  PUBLIC init_popIII_table, interpolate_popIII_table
+#endif
 #endif
   PRIVATE   ! default
 
@@ -267,6 +270,38 @@ MODULE SED_module
   ! the case of SED_isEgy=true). Lum-acc is accumulated lum.
   real(dp),allocatable,dimension(:,:,:,:)::SED_table
   ! ----------------------------------------------------------------------
+
+#ifdef INDIVIDUAL_SINK_STARS
+  ! Tables of Pop III star data from https://iopscience.iop.org/article/10.3847/1538-3881/ac9b43/pdf
+  ! For now we assume a simply black body with a small H and He atmosphere
+  real(dp), dimension(1:59):: larkin_mass = (/ &
+      1.000, 1.124, 1.264, 1.421, 1.597, 1.796, 2.019, &
+      2.270, 2.551, 2.868, 3.225, 3.625, 4.075, 4.582, &
+      5.151, 5.790, 6.510, 7.318, 8.227, 9.249, 10.398, &
+      11.690, 13.141, 14.774, 16.609, 18.672, 20.991, 23.598, &
+      26.529, 29.825, 33.529, 37.694, 42.376, 47.639, 53.557, &
+      60.209, 67.688, 76.095, 85.547, 96.172, 108.118, 121.547, &
+      136.645, 153.617, 172.698, 194.149, 218.264, 245.375, 275.853, &
+      310.117, 348.637, 391.941, 440.624, 495.354, 556.881, 626.052, &
+      703.814, 791.234, 820.200 /)
+  real(dp), dimension(1:59):: larkin_temp = (/ &
+      7180, 8047, 9000, 10045, 11189, 12437, 13796, 15273, 16873, 18602, &
+      20466, 22472, 24623, 26924, 29381, 31996, 34772, 37712, 40817, 44087, &
+      47521, 51118, 54874, 58785, 62432, 65238, 68031, 70799, 73528, 76205, &
+      78819, 81355, 83800, 86143, 88369, 90467, 92425, 94232, 95878, 97352, &
+      98647, 99754, 100666, 101379, 102000, 102624, 103253, 103885, 104521, &
+      105160, 105804, 106452, 107103, 107759, 108419, 109082, 109750, 110422, & 
+      110629 /)
+  real(dp), dimension(1:59):: larkin_llum = (/ &
+      0.267, 0.485, 0.700, 0.911, 1.118, 1.322, 1.523, 1.719, 1.912, 2.102, &
+      2.288, 2.471, 2.650, 2.825, 2.997, 3.165, 3.330, 3.491, 3.648, 3.802, &
+      3.953, 4.100, 4.243, 4.383, 4.519, 4.652, 4.781, 4.906, 5.028, 5.147, &
+      5.261, 5.373, 5.480, 5.584, 5.685, 5.782, 5.875, 5.965, 6.052, 6.134, &
+      6.214, 6.289, 6.361, 6.430, 6.497, 6.563, 6.630, 6.697, 6.764, 6.831, &
+      6.898, 6.964, 7.031, 7.098, 7.165, 7.232, 7.299, 7.365, 7.386 /)
+  real(dp), dimension(1:59,1:NGROUPS):: larkin_nphot
+
+#endif
 
 CONTAINS
 
@@ -1324,6 +1359,100 @@ SUBROUTINE initialize_group_energies_from_blackbody(T, group_L0, group_L1, group
   end do
 
 END SUBROUTINE initialize_group_energies_from_blackbody
+
+#ifdef INDIVIDUAL_SINK_STARS
+SUBROUTINE init_popIII_table(group_L0, group_L1)
+! Initializes pop III data in terms of photons/s emitted by each group
+  use amr_commons, only: myid
+  use rt_parameters, only: nGroups
+  use spectrum_integrator_module
+  use constants, only: c_cgs, eV2erg, sb, pi, hplanck, L_sun
+  implicit none
+  real(dp), intent(in):: group_L0(nGroups), group_L1(nGroups)
+  real(dp):: X(100000), Y(100000)
+  integer:: i, ii, ip
+  real(dp):: lambda_max, lambda_min, delta_lambda
+  real(dp):: rescale_factor, atmosphere_scale
+
+  if (myid.eq.1) write(*,*) "Initializing blackbody radiation fields"
+
+  ! If we integrate the planck function over all frequencies, we
+  ! get sigma T^4 / pi. So we need to rescale our integrals 
+  ! by this value divided by the luminosity of the star
+  do i=1,59
+     rescale_factor = (10.d0**larkin_llum(i) * L_sun) / (sb * (larkin_temp(i)**4.d0) / pi)
+
+     ! Loop over groups
+     do ip = 1, nGroups
+
+        ! No update for non-SED groups (L0>L1):
+        if(group_L0(ip).ne. 0d0 .and. group_L1(ip) .ne. 0d0 .and. &
+             &  (group_L0(ip) .ge. group_L1(ip)) ) cycle
+
+        ! Fill out the X and Y arrays for integration
+        lambda_max = (hplanck * c_cgs / (group_L0(ip)*eV2erg)) * 1d8 ! [A]
+        lambda_min = (hplanck * c_cgs / (group_L1(ip)*eV2erg)) * 1d8 ! [A]
+        delta_lambda = (lambda_max - lambda_min) / 100000.0
+
+        ! Initialize X and Y arrays and fill them out
+        X = 0.d0
+        Y = 0.d0
+        do ii=1, 100000
+           atmosphere_scale = 1.0
+           X(ii) = lambda_min + (delta_lambda * (real(ii,kind=dp)-1.d0))
+           if (X(ii).lt.912.d0) atmosphere_scale = 0.75d0
+           if (X(ii).lt.228.d0) atmosphere_scale = 0.25d0
+           Y(ii) = atmosphere_scale * blackbody(larkin_temp(i), X(ii)) / (hplanck * c_cgs / (X(ii)*1e-8)) ! Convert to photon number
+           X(ii) = X(ii) * 1.d-8
+        end do
+
+        ! Integrate to get the number of photons
+        larkin_nphot(i,ip) = trapz1(X,Y,100000) * rescale_factor
+
+     end do
+
+  end do
+END SUBROUTINE init_popIII_table
+
+FUNCTION interpolate_popIII_table(T,ig) result(nphot_per_second)
+  ! Function to get the number of photons emitted by a Pop III star
+  ! of a given blackbody temperature
+  implicit none
+  real(dp), intent(in):: T
+  integer, intent(in):: ig
+  real(dp):: nphot_per_second
+  real(dp):: T_loc, frac_low, frac_high
+  integer:: idx, i
+
+  T_loc = T
+
+  ! No extrapolation
+  if (T_loc.lt.larkin_temp(1)) then
+     nphot_per_second = larkin_nphot(1,ig)
+     return
+  end if
+
+  if (T_loc.ge.larkin_temp(59)) then
+     nphot_per_second = larkin_nphot(59,ig)
+     return
+  end if
+
+  ! 1D interpolation
+  idx = 1
+  do i=1,58
+     if (T_loc.ge.larkin_temp(i) .and. T_loc.lt.larkin_temp(i+1)) then
+        idx = i
+     end if
+  end do
+
+  frac_high = (T_loc - larkin_temp(idx)) / (larkin_temp(idx+1) - larkin_temp(idx))
+  frac_low = 1.d0 - frac_high
+
+  nphot_per_second = (frac_low * larkin_nphot(idx,ig)) + (frac_high * larkin_nphot(idx+1,ig))
+
+END FUNCTION interpolate_popIII_table
+
+#endif
 
 #endif
 

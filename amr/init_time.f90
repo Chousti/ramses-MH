@@ -13,7 +13,7 @@ subroutine init_time
   use photoionization_UVB_module, only: load_UVB_data, update_UVB
   use charge_exchange_module, only: load_ct_rates
   use rtz_coolrates_module, only: initialize_high_temperature_metal_cooling, initialize_fine_structure_tables
-  use metal_yields_module, only: initialize_portinari_yields
+  use metal_yields_module, only: initialize_SN_yields
   use molecules_module, only: initialize_SCO_table
 #else
   use rt_cooling_module
@@ -345,7 +345,7 @@ subroutine init_time
   call initialize_SCO_table()
 
   ! Initialize the metal yields
-  call initialize_portinari_yields()
+  call initialize_SN_yields()
 
 #endif
 

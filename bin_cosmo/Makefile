@@ -97,7 +97,7 @@ GITREPO = $(shell git config --get remote.$(GITREMOTE).url)
 BUILDDATE = $(shell date +"%D-%T")
 BUILDCOMMAND =${MAKE} ${MAKEFLAGS}
 DEFINES = -DNVECTOR=$(NVECTOR) -DNDIM=$(NDIM) -DNPRE=$(NPRE) -DNENER=$(NENER) \
-          -DNVAR=$(NVAR) -DNHYDRO=$(NHYDRO) -DSOLVER$(SOLVER)
+          -DNVAR=$(NVAR) -DNHYDRO=$(NHYDRO) -DSOLVER$(SOLVER) -DINDIVIDUAL_SINK_STARS
 ifeq ($(ATON),1)
    DEFINES += -DATON
 endif
@@ -148,8 +148,8 @@ ifeq ($(COMPILER),GNU)
       FC = gfortran
       FFLAGS += -DWITHOUTMPI
    endif
-   F90 += -ffree-line-length-none -fimplicit-none 
-   FC += -ffree-line-length-none -fimplicit-none 
+   F90 += -ffree-line-length-none -fimplicit-none -ffixed-line-length-none 
+   FC += -ffree-line-length-none -fimplicit-none -ffixed-line-length-none 
    ifeq ($(GCOV),1)
          F90 += -O0 -fprofile-arcs -ftest-coverage
    else
@@ -221,14 +221,15 @@ VPATH += ../hydro:../pm:../poisson:../amr:../io
 #############################################################################
 # All objects
 MODOBJ = mpi_mod.o amr_parameters.o amr_commons.o amr_constants.o random.o pm_parameters.o sink_feedback_parameters.o \
-         pm_commons.o poisson_parameters.o collapse_parameters.o dump_utils.o constants.o safe_math_module.o file_module.o
+         pm_commons.o poisson_parameters.o collapse_parameters.o dump_utils.o constants.o safe_math_module.o file_module.o \
+         imf_module.o
 ifeq ($(GRACKLE),1)
    MODOBJ += grackle_parameters.o
 endif
 MODOBJ += poisson_commons.o hydro_parameters.o hydro_commons.o \
           cooling_module.o bisection.o sparse_mat.o clfind_commons.o \
           gadgetreadfile.o write_makefile.o write_patch.o write_gitinfo.o \
-          metal_yields_module.o sink_sn_feedback.o
+          metal_yields_module.o sink_sn_feedback.o 
 ifeq ($(RT),1)
    MODOBJ += rt_parameters.o rt_hydro_commons.o coolrates_module.o \
              rt_spectra.o rt_cooling_module.o rt_flux_module.o
