@@ -91,6 +91,13 @@ module pm_parameters
 #ifdef INDIVIDUAL_SINK_STARS
   real(dp) :: p3_mchar=20.d0 ! Characteristic mass of Pop III stars
   real(dp) :: z_crit_pop3 = 4.69 ! 10^-4 Zsol
+  real(dp) :: group_mass = 4.d0
+  real(dp) :: lp_mass = 20.d0
+  real(dp) :: imf_m0 = 0.1d0
+  real(dp) :: imf_m1 = 0.5d0
+  real(dp) :: imf_m2 = 300.d0
+  real(dp) :: imf_a1 = -1.3d0
+  real(dp) :: imf_a2 = -2.7d0
 #endif 
 
 end module pm_parameters

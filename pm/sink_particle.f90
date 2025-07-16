@@ -760,8 +760,13 @@ subroutine grow_sink(ilevel,on_creation)
                ! Convert metallicity to format needed by portinari
                star_met = (10.d0**(star_met - 8.69d0)) * 0.02d0
 
-               ! Get the main-sequence lifetime
-               ms_lifetime = get_portinari_stellar_lifetime(star_met,msink_actual(isink))
+               ! Get the main-sequence lifetime for massive stars
+               if (msink_actual(isink).ge.8.d0) then 
+                  ms_lifetime = get_portinari_stellar_lifetime(star_met,msink_actual(isink))
+               else
+                  ! TODO(code): UPDATE THIS WITH A PROPER CALCULATION
+                  ms_lifetime = 1.d9
+               end if
 
                ! Check if the stellar age is older than the main-sequence lifetime
                if (star_age_Myr.gt.ms_lifetime) then
@@ -786,7 +791,7 @@ subroutine grow_sink(ilevel,on_creation)
         if (msink(isink).ge.msink_actual(isink)) then
 
            ! If the star is pre main-sequence put it on the main sequence
-           if (evolution_flag(isink).eq.1) then
+           if (ABS(evolution_flag(isink)).eq.1) then
               ! Store the time the particle reached the main sequence
               if (use_proper_time) then
                  main_sequence_time(isink)=texp
@@ -795,7 +800,12 @@ subroutine grow_sink(ilevel,on_creation)
               endif
 
               ! Put the star on the main sequence if we have reached or exceeded the target mass
-              evolution_flag(isink) = 0
+              ! If it's a group of low mass stars, set the flag to -2
+              if (evolution_flag(isink).eq.1) then
+                 evolution_flag(isink) = 0
+              else 
+                 evolution_flag(isink) = -2
+              end if
            end if
         end if
 
@@ -1150,28 +1160,31 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
 
                  ! Pop II case
                  else
-                    ! Convert metallicity to format needed by portinari
-                    star_met = (10.d0**(star_met - 8.69d0)) * 0.02d0
+                    ! We only explode stars with mass > 8 Msol
+                    if (msink_actual(isink).ge.8.d0) then 
+                        ! Convert metallicity to format needed by portinari
+                        star_met = (10.d0**(star_met - 8.69d0)) * 0.02d0
 
-                    ! Get the main-sequence lifetime
-                    ms_lifetime = get_portinari_stellar_lifetime(star_met,msink_actual(isink) * scale_m/M_sun)
+                        ! Get the main-sequence lifetime
+                        ms_lifetime = get_portinari_stellar_lifetime(star_met,msink_actual(isink) * scale_m/M_sun)
 
-                    ! Check if the stellar age is older than the main-sequence lifetime
-                    if (star_age_Myr.gt.ms_lifetime) then
-                       ! Trigger a SN
-                       is_sn = .true.
+                        ! Check if the stellar age is older than the main-sequence lifetime
+                        if (star_age_Myr.gt.ms_lifetime) then
+                           ! Trigger a SN
+                           is_sn = .true.
 
-                       ! Get the energy of the SN -- defaulted to 10^51 ergs for Pop II for now
-                       sn_e = 1.d51
+                           ! Get the energy of the SN -- defaulted to 10^51 ergs for Pop II for now
+                           sn_e = 1.d51
 
-                       ! Now get the yields
-                       counter = 0
-                       do iElement = 1,27
-                          if (elements(iElement)%atomic_number .gt. 0) then
-                             counter = counter + 1
-                             loc_metal_yield(counter) = get_portinari_ejecta_mass(star_met, msink_actual(isink) * scale_m/M_sun, iElement)
-                          end if
-                       end do
+                           ! Now get the yields
+                           counter = 0
+                           do iElement = 1,27
+                              if (elements(iElement)%atomic_number .gt. 0) then
+                                 counter = counter + 1
+                                 loc_metal_yield(counter) = get_portinari_ejecta_mass(star_met, msink_actual(isink) * scale_m/M_sun, iElement)
+                              end if
+                           end do
+                        end if
                     end if
                     
                  endif
@@ -1451,6 +1464,9 @@ subroutine print_sink_properties(dMEDoverdt,dMEDoverdt_smbh,rho_inf,r2)
   use amr_commons
   use hydro_commons
   use constants, only: twopi, M_sun, pc2cm, yr2sec, Gyr2sec
+#ifdef INDIVIDUAL_SINK_STARS
+  use metal_yields_module, only: getStarAgeMyr
+#endif
   use mpi_mod
   implicit none
   real(dp),dimension(1:nsinkmax)::dMEDoverdt,rho_inf,r2
@@ -1538,13 +1554,16 @@ subroutine print_sink_properties(dMEDoverdt,dMEDoverdt_smbh,rho_inf,r2)
         else
            write(*,*)'simulation time [yr] = ',t*scale_t/yr2sec
         end if
-        write(*,'(" =============================================================================================================================================")')
 #ifdef INDIVIDUAL_SINK_STARS
-        write(*,'("   Id     M[Msol]      M_F[Msol]         x             y             z         vx[km/s]      vy[km/s]      vz[km/s]     spin/spmax    Mdot[Msol/y]   age[yr]")')
+        write(*,'(" ==============================================================================================================================================================")')
+        write(*,'("   Id     M[Msol]      M_F[Msol]         x             y             z         vx[km/s]      vy[km/s]      vz[km/s]     spin/spmax    Mdot[Msol/y]   age[Myr]")')
+        write(*,'(" ==============================================================================================================================================================")')
 #else
-        write(*,'("   Id     M[Msol]          x             y             z         vx[km/s]      vy[km/s]      vz[km/s]     spin/spmax    Mdot[Msol/y]   age[yr]")')
+        write(*,'(" ==============================================================================================================================================")')
+        write(*,'("   Id     M[Msol]          x             y             z         vx[km/s]      vy[km/s]      vz[km/s]     spin/spmax    Mdot[Msol/y]   age[Myr]")')
+        write(*,'(" ==============================================================================================================================================")')
 #endif
-        write(*,'(" =============================================================================================================================================")')
+        
         do i=nsink,1,-1
            isink=idsink_sort(i)
            l_abs=(lsink(isink,1)**2+lsink(isink,2)**2+lsink(isink,3)**2)**0.5d0
@@ -1559,9 +1578,17 @@ subroutine print_sink_properties(dMEDoverdt,dMEDoverdt_smbh,rho_inf,r2)
                 & vsink(isink,1:ndim)*scale_v/1d5,&
                 & l_abs/l_max,&
                 & dMsink_overdt(isink)*scale_m/scale_t/(M_sun/yr2sec),&
-                & (t-tsink(isink))*scale_t/yr2sec
+#ifdef INDIVIDUAL_SINK_STARS
+                & getStarAgeMyr(tsink(isink))
+#else
+                & ((t-tsink(isink))*scale_t/yr2sec)/1e6
+#endif
         end do
-        write(*,'(" =============================================================================================================================================")')
+#ifdef INDIVIDUAL_SINK_STARS
+        write(*,'(" ==============================================================================================================================================================")')
+#else
+        write(*,'(" ==============================================================================================================================================")')
+#endif
      endif
   endif
 end subroutine print_sink_properties
@@ -1616,6 +1643,7 @@ subroutine make_sink_from_clump(ilevel)
 #endif
 #ifdef INDIVIDUAL_SINK_STARS
   integer:: im
+  real(dp):: star_met
 #endif
 
 #if NDIM==3
@@ -1893,12 +1921,25 @@ subroutine make_sink_from_clump(ilevel)
         fsink_partial(isink,1:ndim,levelmin:nlevelmax)=0.0
         vsold(isink,1:ndim,ilevel)=vsink_all(isink,1:ndim)
         vsnew(isink,1:ndim,ilevel)=vsink_all(isink,1:ndim)
-#ifdef INDIVIDUAL_SINK_STARS
-        ! Draw sink final mass from IMF
-        ! For now we just assume everything is Pop III
-        msink_actual(isink) = sample_IMF_pop3() * M_sun / (scale_d*scale_l**ndim)
-
+#ifdef INDIVIDUAL_SINK_STARS        
+        ! Get the metallicity of the sink
         sink_metallicity(isink,:) = sink_metallicity_all(isink,:)
+        star_met = 12.d0 + LOG10((sink_metallicity(isink,5)+1.d-40)/(sink_metallicity(isink,1) * 15.9994d0))
+
+        ! Use the metallisity to draw a final mass from the IMF
+        if (star_met.lt.z_crit_pop3) then ! Pop III case
+           msink_actual(isink) = sample_IMF_pop3() * M_sun / (scale_d*scale_l**ndim)
+        else ! Pop II case
+           ! If we return a negative number, than we set the sink mass to the group mass and the particle is degenerate
+           msink_actual(isink) = sample_IMF_pop2(imf_m0,imf_m1,imf_m2,imf_a1,imf_a2,group_mass,lp_mass,isink) * M_sun / (scale_d*scale_l**ndim)
+           if (msink_actual(isink).lt.0.d0) then
+              ! Flag the particles as degenerate
+              evolution_flag(isink) = -1
+              ! Set the sink mass to the lp_mass
+              msink_actual(isink) = lp_mass * M_sun / (scale_d*scale_l**ndim)
+           end if
+
+        end if
 #endif
      endif
   end do
