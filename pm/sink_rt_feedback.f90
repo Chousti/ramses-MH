@@ -10,11 +10,20 @@ SUBROUTINE update_sink_RT_feedback
 !-------------------------------------------------------------------------
   use rt_parameters
   use sink_feedback_parameters
+#ifdef INDIVIDUAL_SINK_STARS
+  use pm_parameters, only: nsink
+#endif
   implicit none
 
   if(nstellar>0)then
      rt_advect=.true.
   endif
+
+#ifdef INDIVIDUAL_SINK_STARS
+  if(nsink>0)then
+     rt_advect=.true.
+  endif
+#endif
 
 END SUBROUTINE update_sink_RT_feedback
 !*************************************************************************
@@ -127,7 +136,7 @@ SUBROUTINE gather_ioni_flux(dt,sink_ioni_flux)
   use pm_commons
   use rt_parameters
   use sink_feedback_parameters
-
+  use SED_module, only: interpolate_popIII_table
   implicit none
 
   real(dp),intent(in)::dt
@@ -138,6 +147,18 @@ SUBROUTINE gather_ioni_flux(dt,sink_ioni_flux)
 
   sink_ioni_flux = 0d0
 
+#ifdef INDIVIDUAL_SINK_STARS
+  do isink=1,nsink
+     !Only main-sequence sinks emit
+     if (evolution_flag(isink).eq.0) then 
+        do ig=1,ngroups
+           !TODO(code): for now assume everything is a 10^5 K blackbody
+           !Realistically we will get T from the mass
+           sink_ioni_flux(isink,ig) = interpolate_popIII_table(1d5,ig)
+        end do
+     end if
+  end do
+#else
   do istellar=1,nstellar
     ! find corresponding sink
      isink = 1
@@ -167,6 +188,7 @@ SUBROUTINE gather_ioni_flux(dt,sink_ioni_flux)
      enddo
 
   enddo
+#endif
 
 END SUBROUTINE gather_ioni_flux
 !*************************************************************************

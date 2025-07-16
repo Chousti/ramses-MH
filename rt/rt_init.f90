@@ -284,10 +284,12 @@ SUBROUTINE read_rt_params(nml_ok)
 #endif
   endif
 
+#ifndef INDIVIDUAL_SINK_STARS
   if(rt_sink.and.(.not.stellar))then
      write(*,*) 'Enable stellar particles to use rt_sink'
      nml_ok=.false.
   endif
+#endif
 
   call read_rt_groups()
 112 format (' Using a level-variable speed of light, with f_c= '20(1pe12.3))
@@ -424,6 +426,10 @@ SUBROUTINE read_rt_groups()
 
   ! Initialize group energies for the same black body
   call initialize_group_energies_from_blackbody(1.d5, groupL0, groupL1, group_egy)
+
+#ifdef INDIVIDUAL_SINK_STARS
+  call init_popIII_table(groupL0, groupL1)
+#endif
 
 #endif
 

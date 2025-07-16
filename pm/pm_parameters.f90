@@ -18,6 +18,7 @@ module pm_parameters
   real(dp)::sink_soft=2                      ! Sink grav softening length in dx at levelmax for "direct force" sinks
   real(dp)::mass_sink_direct_force=-1        ! mass above which sinks are treated as "direct force" objects
   integer::nlevelmax_sink=0                  ! HACK to put sinks at coarser level (for sims which are not fully refined)
+  logical::sink_constant_phys_radius=.true.  ! Whether to make the sink injection radius constant in physical or comoving coordinates
 
   logical::create_sinks=.false.              ! turn formation of new sinks on
   logical::check_energies=.true.             ! when flagging clumps for sink formation, check whether their gravitational energy is dominant
@@ -88,5 +89,10 @@ module pm_parameters
 
   integer :: tracer_first_balance_levelmin = -1  ! Set to >0 to add more weight on level finer than this
   integer :: tracer_first_balance_part_per_cell = 0 ! Typical initial number of parts per cell
+
+#ifdef INDIVIDUAL_SINK_STARS
+  real(dp) :: p3_mchar=20.d0 ! Characteristic mass of Pop III stars
+  real(dp) :: z_crit_pop3 = 4.69 ! 10^-4 Zsol
+#endif 
 
 end module pm_parameters
