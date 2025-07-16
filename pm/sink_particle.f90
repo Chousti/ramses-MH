@@ -387,7 +387,7 @@ subroutine collect_acczone_avg(ilevel)
   if(verbose)write(*,111)ilevel
 
   ! Compute (volume weighted) averages over accretion zone
-  wden=0d0; wvol=0d0; weth=0d0; wmom=0d0
+  wden=0d0; wvol=0d0; weth=0d0; wmom=0d0; wdiv=0d0
 
   ! Loop over cpus
   do icpu=1,ncpu
@@ -457,11 +457,13 @@ subroutine collect_acczone_avg(ilevel)
      call MPI_ALLREDUCE(wvol,wvol_new,nsinkmax,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,info)
      call MPI_ALLREDUCE(weth,weth_new,nsinkmax,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,info)
      call MPI_ALLREDUCE(wmom,wmom_new,nsinkmax*ndim,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,info)
+     call MPI_ALLREDUCE(wdiv,wdiv_new,nsinkmax*ndim,MPI_DOUBLE_PRECISION,MPI_SUM,MPI_COMM_WORLD,info)
 #else
      wden_new=wden
      wvol_new=wvol
      weth_new=weth
      wmom_new=wmom
+     wdiv_new=wdiv
 #endif
   endif
 
@@ -470,6 +472,7 @@ subroutine collect_acczone_avg(ilevel)
      weighted_volume(isink,ilevel)=wvol_new(isink)
      weighted_momentum(isink,ilevel,1:ndim)=wmom_new(isink,1:ndim)
      weighted_ethermal(isink,ilevel)=weth_new(isink)
+     weighted_divergence(isink,ilevel)=wdiv_new(isink)
   end do
 
 111 format('   Entering collect_acczone_avg for level ',I2)
@@ -498,7 +501,7 @@ subroutine collect_acczone_avg_np(ind_grid,ind_part,ind_grid_part,ng,np,ilevel)
   integer::irad
 #endif
   real(dp)::d,e,v2
-  real(dp)::scale,weight,dx_cloud,vol_cloud
+  real(dp)::scale,weight,dx_cloud,vol_cloud,dx_min
   real(dp),dimension(1:ndim)::vv
 #ifdef SOLVERmhd
   real(dp)::bx1,bx2,by1,by2,bz1,bz2
@@ -508,17 +511,44 @@ subroutine collect_acczone_avg_np(ind_grid,ind_part,ind_grid_part,ng,np,ilevel)
   real(dp),dimension(1:nvector,1:ndim,1:twotondim)::xx
   real(dp),dimension(1:nvector,1:twotondim)::vol
   logical, dimension(1:nvector,1:twotondim)::ok
+  real(dp),dimension(1:nvector,1:nvar_all),save::fluid_var_left,fluid_var_right,fluid_var
+  real(dp),dimension(1:nvector),save::divpart
 
   ! Compute volume of each cloud particle
   nx_loc=(icoarse_max-icoarse_min+1)
   scale=boxlen/dble(nx_loc)
   dx_cloud=(0.5D0**nlevelmax_sink)*scale/aexp/2 ! factor of 2 hard-coded
   vol_cloud=dx_cloud**ndim
+  !dx_min=scale*0.5D0**nlevelmax_sink/aexp
 
   ! Copy cloud particle coordinates
   do idim=1,ndim
      do j=1,np
         xpart(j,idim)=xp(ind_part(j),idim)
+     end do
+  end do
+
+  !--------------------------------------------------------------------------------
+  ! Compute rho(v-vsink) divergence around each cloud particle <--- NC
+  !--------------------------------------------------------------------------------
+  divpart = 0d0
+  do idim=1,ndim
+     do j=1,np
+        !use min cell spacing to obtain right position, get right cell index
+        xpart(j,idim)=xpart(j,idim)+0.5*dx_cloud
+        call cic_get_vals(fluid_var_right,ind_grid,xpart,ind_grid_part,ng,np,ilevel,.false.)
+
+        !use min cell spacing to obtain left position, get left cell index
+        xpart(j,idim)=xpart(j,idim)-dx_cloud
+        call cic_get_vals(fluid_var_left,ind_grid,xpart,ind_grid_part,ng,np,ilevel,.false.)
+
+        !back to original position
+        xpart(j,idim)=xpart(j,idim)+0.5*dx_cloud
+
+        !compute divergence of (rho*v - rho*vsink) in one go
+        isink=-idp(ind_part(j))
+        divpart(j)=divpart(j)+(fluid_var_right(j,idim+1)-fluid_var_right(j,1)*vsink(isink,idim)-&
+             fluid_var_left(j,idim+1)+fluid_var_left(j,1)*vsink(isink,idim))/dx_cloud
      end do
   end do
 
@@ -566,6 +596,7 @@ subroutine collect_acczone_avg_np(ind_grid,ind_part,ind_grid_part,ng,np,ilevel)
            wden(isink)=wden(isink)+weight*d
            wmom(isink,1:ndim)=wmom(isink,1:ndim)+weight*d*vv(1:ndim)
            weth(isink)=weth(isink)+weight*d*e
+           wdiv(isink)=wdiv(isink)+weight*divpart(j)
 
         endif
      end do
@@ -1026,7 +1057,7 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
                  m_acc_smbh=0
               end if
            else
-              if (bondi_accretion)then
+              if (bondi_accretion.or.flux_accretion)then
                  m_acc      = dMsink_overdt(isink)*dtnew(ilevel)*weight/volume
                  m_acc_smbh = dMsmbh_overdt(isink)*dtnew(ilevel)*weight/volume
               end if
@@ -1287,8 +1318,8 @@ subroutine compute_accretion_rate(write_sinks)
   integer::i,nx_loc,isink
   real(dp)::scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v,scale_m
   real(dp)::factG,d_star,boost
-  real(dp)::vrel2,c2,density,volume,ethermal,dx_min,scale,mgas,v_bondi
-  real(dp)::r2_smbh,rho_inf_smbh
+  real(dp)::vrel2,c2,density,volume,ethermal,dx_min,scale,mgas,v_bondi,divergence
+  real(dp)::r2_smbh,rho_inf_smbh,fa_fact
   real(dp),dimension(1:ndim)::velocity
   real(dp),dimension(1:nsinkmax)::dMEDoverdt,r2,rho_inf
   real(dp),dimension(1:nsinkmax)::dMEDoverdt_smbh
@@ -1320,12 +1351,13 @@ subroutine compute_accretion_rate(write_sinks)
      dMEDoverdt_smbh(isink)=0
 
      ! Compute sink sphere average quantities
-     density=0d0; volume=0d0; velocity=0d0; ethermal=0d0
+     density=0d0; volume=0d0; velocity=0d0; ethermal=0d0; divergence=0d0
      do i=levelmin,nlevelmax
         density=density+weighted_density(isink,i)
         ethermal=ethermal+weighted_ethermal(isink,i)
         velocity(1:ndim)=velocity(1:ndim)+weighted_momentum(isink,i,1:ndim)
         volume=volume+weighted_volume(isink,i)
+        divergence=divergence+weighted_divergence(isink,i)
      end do
      mgas=density
      density=density/(volume+tiny(0.0_dp))
@@ -1365,6 +1397,26 @@ subroutine compute_accretion_rate(write_sinks)
 
      ! Compute final sink accretion rate
      if(bondi_accretion)dMsink_overdt(isink)=dMBHoverdt(isink)
+
+     ! Flux accretion - based on mass flux onto the sink
+     if(flux_accretion)then
+        ! Average divergence over all cloud particles multiplied by cloud volume
+        dMsink_overdt(isink)=-1.*divergence
+
+        ! Correct with small factor to keep density close to threshold (see Bleuler+2014)
+        fa_fact = (log10(density)-log10(d_sink))*0.1d0+1.0d0
+        dMsink_overdt(isink)=dMsink_overdt(isink)*fa_fact
+
+        write(*,*)'flux acc: ',-1.*divergence,dMsink_overdt(isink),dMBHoverdt(isink)
+
+        if(use_bondi_correction)then
+           if((0.5*msink(isink)/c2)<(ir_cloud*dx_min))then
+              write(*,*)'using bondi correction...'
+              dMsink_overdt(isink)=dMBHoverdt(isink)
+           end if
+         end if
+      end if
+
      if(eddington_limit)dMsink_overdt(isink)=min(dMBHoverdt(isink),eddington_cap*dMEDoverdt(isink))
 
      if(smbh.and.mass_smbh_seed>0.0)then
@@ -2858,7 +2910,8 @@ subroutine read_sink_params()
        AGN_fbk_frac_ener,AGN_fbk_frac_mom,T2_max,v_max,boost_threshold_density,&
        epsilon_kin,AGN_fbk_mode_switch_threshold,kin_mass_loading,bondi_use_vrel,smbh,agn,max_mass_nsc,&
        agn_acc_method,agn_inj_method,sink_descent,gamma_grad_descent,fudge_graddescent, &
-       sink_constant_phys_radius,p3_mchar,z_crit_pop3
+       sink_constant_phys_radius,p3_mchar,z_crit_pop3,&
+       use_bondi_correction
   real(dp)::scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v
 
   if(.not.cosmo) call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
@@ -2910,6 +2963,7 @@ subroutine read_sink_params()
   ! Check for accretion scheme
   if (accretion_scheme=='bondi')bondi_accretion=.true.
   if (accretion_scheme=='threshold')threshold_accretion=.true.
+  if (accretion_scheme=='flux')flux_accretion=.true.
 
   ! For sink formation and accretion a threshold must be given
   if (create_sinks .or. (accretion_scheme .ne. 'none'))then
