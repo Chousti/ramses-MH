@@ -100,6 +100,12 @@ module pm_parameters
   real(dp) :: imf_m2 = 300.d0
   real(dp) :: imf_a1 = -1.3d0
   real(dp) :: imf_a2 = -2.7d0
+
+  !!! Protostellar jets (following Cunningham+2011, STARFORGE: Grudic+2020)
+  logical  :: protostellar_jet = .false. ! Whether to launch a jet during the protostellar phase
+  real(dp) :: jet_theta0       = 0.01    ! approximate opening angle for jet
+  real(dp) :: jet_vel_frac     = 0.3     ! Fraction of keplerian velocity directed into the jet
+  real(dp) :: jet_mass_frac    = 0.3     ! Fraction of accreted mass directed into the jet
 #endif 
 
 end module pm_parameters

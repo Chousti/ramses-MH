@@ -923,7 +923,7 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
   real(dp),dimension(1:ndim)::vv
 
   real(dp),dimension(1:ndim)::r_rel,v_rel,x_acc,p_acc,l_acc
-  real(dp)::fbk_ener_AGN,fbk_mom_AGN,r_len
+  real(dp)::fbk_ener_AGN,fbk_mom_AGN,r_len,jet_mass,jet_mom
   logical,dimension(1:ndim)::period
 
   real(dp)::tan_theta,cone_dist,orth_dist
@@ -985,6 +985,13 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
      end do
   end do
   call cic_get_cells(indp,xx,vol,ok,ind_grid,xpart,ind_grid_part,ng,np,ilevel)
+
+#ifdef INDIVIDUAL_SINK_STARS
+  ! Get weights for feedback injection - can also add some for accretion if desired
+  if(protostellar_jet)then
+     call get_feedback_weighting(ind_part,np,jet_weightings)
+  end if
+#endif
 
   ! Loop over eight CIC volumes
   do ind=1,twotondim
@@ -1254,6 +1261,43 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
                        unew(indp(j,ind),ivar) = unew(indp(j,ind),ivar) * (unew(indp(j,ind),1) / pre_sn_density)
                     end do
 
+                 end if
+
+              else 
+              !!! Protostellar feedback (winds + jets)
+                 ! Carry out the protostellar jet
+                 if(protostellar_jet)then
+                    ! Compute the stellar radius TODO: Needs to be interpolated
+                    stellar_radius = 396340*1e5/scale_l
+
+                    ! Compute jet quantities
+                    ! Mass
+                    jet_mass = jet_mass_frac*dMsink_overdt(isink)*dtnew(ilevel)*dtnew(ilevel)
+                    ! Momentum
+                    jet_mom  = jet_vel_frac * jet_mass * sqrt(factG * msink(isink) / stellar_radius)
+                    ! TODO: Correct for MHD contribution
+
+                    ! Account for jet weightings
+                    jet_mass = jet_mass * jet_weightings(j)
+                    jet_mom  = jet_mom  * jet_weightings(j)
+
+                    ! Account for cloud particle weightings
+                    jet_mass = jet_mass * (weight/volume) / vol_loc
+                    jet_mom  = jet_mom  * (weight/volume) / vol_loc
+                    if(agn_inj_method=='mass')then
+                       jet_mass = jet_mass * (d/density)
+                       jet_mom  = jet_mom  * (d/density)
+                    end if
+
+                    ! Do the feedback
+                    unew(indp(j,ind),1)        = unew(indp(j,ind),1)        + jet_mass
+                    unew(indp(j,ind),2:ndim+1) = unew(indp(j,ind),2:ndim+1) + jet_mom * r_rel(1:ndim) / r_len
+                    unew(indp(j,ind),neul)     = unew(indp(j,ind),neul)     + sum(jet_mom * r_rel(1:ndim)/r_len * vv(1:ndim))
+                    
+                    ! Do the MHD feedback (TODO)
+
+                    ! Account for the mass of the star
+                    msink(isink) = msink(isink) - jet_mass
                  end if
 
               end if
@@ -2911,7 +2955,7 @@ subroutine read_sink_params()
        epsilon_kin,AGN_fbk_mode_switch_threshold,kin_mass_loading,bondi_use_vrel,smbh,agn,max_mass_nsc,&
        agn_acc_method,agn_inj_method,sink_descent,gamma_grad_descent,fudge_graddescent, &
        sink_constant_phys_radius,p3_mchar,z_crit_pop3,&
-       use_bondi_correction
+       use_bondi_correction,jet_theta0,jet_vel_frac,jet_mass_frac
   real(dp)::scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v
 
   if(.not.cosmo) call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
@@ -3389,6 +3433,118 @@ subroutine synchronize_sink_info
   call MPI_BCAST(new_born,   nsinkmax, MPI_LOGICAL,          1, MPI_COMM_WORLD, info)
 
 end subroutine synchronize_sink_info
+!##############################################################################
+!##############################################################################
+!##############################################################################
+!##############################################################################
+subroutine get_feedback_weighting(ind_part,np,fbk_weights)
+   use amr_commons
+   use hydro_commons
+   use hydro_parameters
+   use pm_commons
+   use constants, only: pi, c_cgs, factG_in_cgs, M_sun, mH, sigma_t
+   implicit none
+
+   integer::np
+   integer,dimension(1:nvector)::ind_part
+   real(dp),dimension(1:nvector)::fbk_weights
+   !##############################################################################
+   ! Routine to compute weightings for classical (thermal,momentum) feedback.
+   ! Returns computed fbk_weight.
+   ! Nicholas Choustikov
+   !##############################################################################
+   integer::j,ii,jj,kk,isink
+   real(dp)::scale,dx_min,nx_loc
+   real(dp)::total_weight,local_weight,r_len,rr,rmax,locw,theta
+   real(dp),dimension(1:ndim)::xrel,r_rel
+   real(dp)::tan_theta,cone_dist,orth_dist
+   real(dp),dimension(1:ndim)::cone_dir
+   logical::ok
+   real(dp)::factG,scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v,scale_m
+
+   ! Conversion factor from user units to cgs units
+   call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
+
+   ! Mesh spacing in that level
+   nx_loc=(icoarse_max-icoarse_min+1)
+   scale=boxlen/dble(nx_loc)
+   dx_min=scale*0.5D0**nlevelmax_sink
+   if (sink_constant_phys_radius) then 
+      dx_min=dx_min/aexp
+   end if
+   rmax=dble(ir_cloud)*dx_min
+   
+   ! Zero the final weights
+   fbk_weights = 0.0
+
+   ! Loop over particles in buffer
+   do j=1,np
+      ! Get sink index
+      isink=-idp(ind_part(j))
+
+      ! Jet axis
+      jet_axis(1:ndim) = lsink(isink,1:ndim) / sqrt(sum(lsink(isink,1:ndim)))
+
+      ! Get relative position of cloud particle from the host sink
+      ! TODO: There is an assumption here, we effectively assume all 8 CIC cells have the same weighting
+      ! based on the cloud particle position
+      r_rel(1:ndim)=(xp(ind_part(j),1:ndim)-xsink(isink,1:ndim))*2/dx_min
+      r_len = sqrt(sum(r_rel**2))
+      theta = acos(dot_product(r_rel(:),jet_axis(:)) / r_len)
+
+      ! Zero the weight
+      total_weight = 0.0; locw=0.0
+
+      ! Loop over possible cloud particles
+      do kk=-2*ir_cloud,2*ir_cloud
+         xrel(3)=dble(kk)
+         do jj=-2*ir_cloud,2*ir_cloud
+            xrel(2)=dble(jj)
+            do ii=-2*ir_cloud,2*ir_cloud
+               xrel(1)=dble(ii)
+               rr=sqrt(sum(xrel**2))
+               theta = acos(dot_product(xrel(:),jet_axis(:)) / rr)
+
+               ! Check if this particle is close enough
+               if(rr<=rmax*2/dx_min)then
+                  ! Compute weights
+                  call psy_function(rr,theta,local_weight)
+                  ! Sum weights
+                  total_weight = total_weight + local_weight
+               end if
+            end do ! End ii loop
+         end do ! End jj loop
+      end do ! End kk loop
+
+      ! Compute weight for cloud particle in question
+      call psy_function(r_len,theta,locw)
+
+      ! Return final weights
+      fbk_weights(j) = locw/total_weight
+        
+      !write(*,*)'wtest:',ind_part(j),isink,r_rel,r_len,locw,total_weight,fbk_weights(j)
+
+   end do ! End j loop
+
+end subroutine get_feedback_weighting
+!##############################################################################
+!##############################################################################
+!##############################################################################
+!##############################################################################
+subroutine psy_function(r,theta,psy)
+   use pm_commons
+   implicit none
+
+   real(kind=8)::r,theta,psy
+
+   ! Distribution function for protostellar jets
+   psy = (log(2/jet_theta0)*sin(theta)**2 + jet_theta0**2)**(-1)
+
+end subroutine psy_function
+!##############################################################################
+!##############################################################################
+!##############################################################################
+!##############################################################################
 #endif
 !##############################################################################
 !##############################################################################
