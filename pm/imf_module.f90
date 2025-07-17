@@ -6,12 +6,13 @@ MODULE imf_module
    public :: sample_IMF_pop3, sample_IMF_pop2
 CONTAINS
 
-FUNCTION sample_IMF_pop3() result(mass)
+FUNCTION sample_IMF_pop3(seed) result(mass)
    !! Samples pop III IMF
    use pm_parameters, only: p3_mchar
    use pm_commons, ONLY: localseed
    use random
    implicit none
+   integer, intent(in):: seed
    real(dp):: mass
    real(dp):: total_mass
    real(dp):: m_min, m_max, d_log10m
@@ -37,7 +38,7 @@ FUNCTION sample_IMF_pop3() result(mass)
    ! Loop again to the mass
    local_probability = 0.0
    mass = 0.0
-   call random_number(RandNum)
+   RandNum = rand_from_seed(seed)
    i = 1
    do while (local_probability.lt.RandNum)
       mass = 10.d0 ** (LOG10(m_min) + d_log10m * real(i-1,kind=dp))
@@ -102,6 +103,7 @@ END FUNCTION sample_IMF_pop2
 
 FUNCTION rand_from_seed(seed) result(r)
     use iso_fortran_env, only: int64, real64
+    use pm_parameters, only: uniform_rand_seed
     implicit none
     integer, intent(in) :: seed
     real(real64) :: r
@@ -115,7 +117,7 @@ FUNCTION rand_from_seed(seed) result(r)
     integer(int64), parameter :: PCG_INCREMENT = 1442695040888963407_int64
     
     ! Initialize state from seed
-    state = int(seed, int64)
+    state = int(seed+uniform_rand_seed, int64)
     
     ! Advance the LCG state
     state = state * PCG_MULTIPLIER + PCG_INCREMENT

@@ -517,9 +517,11 @@ subroutine collect_acczone_avg_np(ind_grid,ind_part,ind_grid_part,ng,np,ilevel)
   ! Compute volume of each cloud particle
   nx_loc=(icoarse_max-icoarse_min+1)
   scale=boxlen/dble(nx_loc)
-  dx_cloud=(0.5D0**nlevelmax_sink)*scale/aexp/2 ! factor of 2 hard-coded
+  dx_cloud=(0.5D0**nlevelmax_sink)*scale/2 ! factor of 2 hard-coded
+  if (sink_constant_phys_radius) then
+     dx_cloud = dx_cloud / aexp
+  end if
   vol_cloud=dx_cloud**ndim
-  !dx_min=scale*0.5D0**nlevelmax_sink/aexp
 
   ! Copy cloud particle coordinates
   do idim=1,ndim
@@ -1368,6 +1370,7 @@ subroutine compute_accretion_rate(write_sinks)
   real(dp),dimension(1:nsinkmax)::dMEDoverdt,r2,rho_inf
   real(dp),dimension(1:nsinkmax)::dMEDoverdt_smbh
   real(dp)::T2_gas,delta_mass_min
+  real(dp)::d_sink_loc
 
   ! Gravitational constant
   factG=1d0
@@ -1448,14 +1451,16 @@ subroutine compute_accretion_rate(write_sinks)
         dMsink_overdt(isink)=-1.*divergence
 
         ! Correct with small factor to keep density close to threshold (see Bleuler+2014)
-        fa_fact = (log10(density)-log10(d_sink))*0.1d0+1.0d0
+        if (n_sink.gt.0.d0) then 
+           d_sink_loc = n_sink / scale_nH
+           fa_fact = (log10(density)-log10(d_sink_loc))*0.1d0+1.0d0
+        else 
+           fa_fact = (log10(density)-log10(d_sink))*0.1d0+1.0d0
+        end if
         dMsink_overdt(isink)=dMsink_overdt(isink)*fa_fact
-
-        write(*,*)'flux acc: ',-1.*divergence,dMsink_overdt(isink),dMBHoverdt(isink)
 
         if(use_bondi_correction)then
            if((0.5*msink(isink)/c2)<(ir_cloud*dx_min))then
-              write(*,*)'using bondi correction...'
               dMsink_overdt(isink)=dMBHoverdt(isink)
            end if
          end if
@@ -2022,9 +2027,9 @@ subroutine make_sink_from_clump(ilevel)
         sink_metallicity(isink,:) = sink_metallicity_all(isink,:)
         star_met = 12.d0 + LOG10((sink_metallicity(isink,5)+1.d-40)/(sink_metallicity(isink,1) * 15.9994d0))
 
-        ! Use the metallisity to draw a final mass from the IMF
+        ! Use the metallicity to draw a final mass from the IMF
         if (star_met.lt.z_crit_pop3) then ! Pop III case
-           msink_actual(isink) = sample_IMF_pop3() * M_sun / (scale_d*scale_l**ndim)
+           msink_actual(isink) = sample_IMF_pop3(isink) * M_sun / (scale_d*scale_l**ndim)
         else ! Pop II case
            ! If we return a negative number, than we set the sink mass to the group mass and the particle is degenerate
            msink_actual(isink) = sample_IMF_pop2(imf_m0,imf_m1,imf_m2,imf_a1,imf_a2,group_mass,lp_mass,isink) * M_sun / (scale_d*scale_l**ndim)
@@ -2954,7 +2959,7 @@ subroutine read_sink_params()
        AGN_fbk_frac_ener,AGN_fbk_frac_mom,T2_max,v_max,boost_threshold_density,&
        epsilon_kin,AGN_fbk_mode_switch_threshold,kin_mass_loading,bondi_use_vrel,smbh,agn,max_mass_nsc,&
        agn_acc_method,agn_inj_method,sink_descent,gamma_grad_descent,fudge_graddescent, &
-       sink_constant_phys_radius,p3_mchar,z_crit_pop3,&
+       sink_constant_phys_radius,p3_mchar,z_crit_pop3,uniform_rand_seed, &
        use_bondi_correction,jet_theta0,jet_vel_frac,jet_mass_frac
   real(dp)::scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v
 

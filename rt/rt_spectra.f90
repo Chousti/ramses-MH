@@ -251,7 +251,7 @@ MODULE SED_module
   PUBLIC initialize_cross_sections_from_blackbody &
         ,initialize_group_energies_from_blackbody
 #ifdef INDIVIDUAL_SINK_STARS
-  PUBLIC init_popIII_table, interpolate_popIII_table
+  PUBLIC init_popIII_table, interpolate_popIII_table, get_popIII_temp_from_mass
 #endif
 #endif
   PRIVATE   ! default
@@ -1413,6 +1413,41 @@ SUBROUTINE init_popIII_table(group_L0, group_L1)
 
   end do
 END SUBROUTINE init_popIII_table
+
+FUNCTION get_popIII_temp_from_mass(mass) result(T)
+  ! Return the surface temperature of the Pop III star
+  ! given its mass
+  implicit none
+  real(dp), intent(in):: mass
+  real(dp):: T
+  real(dp):: frac_low, frac_high
+  integer:: idx, i
+
+  ! No extrapolation
+  if (mass.lt.larkin_mass(1)) then
+     T = larkin_temp(1)
+     return
+  end if
+
+  if (mass.ge.larkin_mass(59)) then
+     T = larkin_temp(59)
+     return
+  end if
+
+  ! 1D interpolation
+  idx = 1
+  do i=1,58
+     if (mass.ge.larkin_mass(i) .and. mass.lt.larkin_mass(i+1)) then
+        idx = i
+     end if
+  end do
+
+  frac_high = (mass - larkin_mass(idx)) / (larkin_mass(idx+1) - larkin_mass(idx))
+  frac_low = 1.d0 - frac_high
+
+  T = (frac_low * larkin_temp(idx)) + (frac_high * larkin_temp(idx+1))
+
+END FUNCTION get_popIII_temp_from_mass
 
 FUNCTION interpolate_popIII_table(T,ig) result(nphot_per_second)
   ! Function to get the number of photons emitted by a Pop III star

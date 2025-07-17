@@ -106,6 +106,7 @@ module pm_parameters
   real(dp) :: jet_theta0       = 0.01    ! approximate opening angle for jet
   real(dp) :: jet_vel_frac     = 0.3     ! Fraction of keplerian velocity directed into the jet
   real(dp) :: jet_mass_frac    = 0.3     ! Fraction of accreted mass directed into the jet
+  integer :: uniform_rand_seed = 42 
 #endif 
 
 end module pm_parameters
