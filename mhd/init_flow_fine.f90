@@ -29,6 +29,10 @@ subroutine init_flow_fine(ilevel)
   use amr_commons
   use hydro_commons
   use cooling_module
+#ifdef RTZ
+  use rt_parameters, only:iIons
+  use rtz_module
+#endif
   use mpi_mod
 #if USE_TURB==1
   use turb_commons
@@ -61,6 +65,10 @@ subroutine init_flow_fine(ilevel)
   character(LEN=5)::nchar,ncharvar
 
   integer,parameter::tag=1107
+
+#ifdef RTZ
+  integer::counter,ielements,jions
+#endif
 
   if(numbtot(1,ilevel)==0)return
   if(verbose)write(*,111)ilevel
@@ -278,6 +286,24 @@ subroutine init_flow_fine(ilevel)
               if(ivar==3)init_array=dfact(ilevel)*vfact(1)*dx_loc/dxini(ilevel)*init_array/vfact(ilevel)
               if(ivar==4)init_array=dfact(ilevel)*vfact(1)*dx_loc/dxini(ilevel)*init_array/vfact(ilevel)
               if(ivar==5)init_array=(1.0d0+init_array)*T2_start/scale_T2
+#ifdef RTZ
+              if(ivar.eq.imetal+0) init_array = 0.76d0 ! Hydrogen
+              if(ivar.eq.imetal+1) init_array = 0.24d0 ! Helium
+              !TODO(code): make general case of arbitrary metallicity
+
+              ! Now set all ionization states to neutral
+              counter = 0
+              do ielements=1,n_elements
+                 do jions=1,elements(ielements)%n_ions
+                    if (jions.eq.1) then 
+                       if (ivar.eq.iIons+counter) then
+                          init_array = 1.d0 ! Initialize every species to neutral
+                       end if
+                    end if
+                    counter = counter + 1
+                 end do
+              end do
+#endif
            endif
 
            ! Loop over cells

@@ -1218,6 +1218,17 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
                               end if
                            end do
                         end if
+                    else if (msink_actual(isink).ge.4.d0) then ! TODO(code): check with matt smith that this is reasonable
+                        ! Stochastically sample SNIa
+
+                        ! Now get the yields
+                        counter = 0
+                        do iElement = 1,27
+                           if (elements(iElement)%atomic_number .gt. 0) then
+                              counter = counter + 1
+                              loc_metal_yield(counter) = get_portinari_ejecta_mass(star_met, msink_actual(isink) * scale_m/M_sun, iElement)
+                           end if
+                        end do
                     end if
                     
                  endif
