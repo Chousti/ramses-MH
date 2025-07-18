@@ -939,6 +939,9 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
   real(dp)::ekinetic, ijm, sn_e_code_units, pre_sn_density
   logical::is_hn, is_sn, is_central_cloud_particle
   integer::counter, iElement, pre_accretion_evolution_flag
+  real(dp),dimension(1:nvector)::jet_weightings
+  real,dimension(1:ndim)::jet_axis
+  real(dp)::stellar_radius,tan_theta_star
 #endif
 
   ! Conversion factor from user units to cgs units
@@ -991,8 +994,13 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
 #ifdef INDIVIDUAL_SINK_STARS
   ! Get weights for feedback injection - can also add some for accretion if desired
   if(protostellar_jet)then
-     call get_feedback_weighting(ind_part,np,jet_weightings)
+     ! Jet geometry safety net
+     jet_theta0 = max(tiny(0.0d0),jet_theta0)
+     jet_theta0 = min(jet_theta0, 180d0)
+     tan_theta_star = tan(pi/180d0*jet_theta0/2) ! tangent of half of the opening angle
+     call get_feedback_weighting(ind_part,np,tan_theta_star,jet_weightings)
   end if
+
 #endif
 
   ! Loop over eight CIC volumes
@@ -1269,37 +1277,48 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
               !!! Protostellar feedback (winds + jets)
                  ! Carry out the protostellar jet
                  if(protostellar_jet)then
-                    ! Compute the stellar radius TODO: Needs to be interpolated
-                    stellar_radius = 396340*1e5/scale_l
+                    ! Check if cloud particle is inside the cone
+                    cone_dir(1:ndim)=lsink(isink,1:ndim)/(sqrt(sum(lsink(isink,1:ndim)**2)) + tiny(0.0_dp))
+                    cone_dist=sum(r_rel(1:ndim)*cone_dir(1:ndim))
+                    orth_dist=sqrt(sum((r_rel(1:ndim)-cone_dist*cone_dir(1:ndim))**2))  
 
-                    ! Compute jet quantities
-                    ! Mass
-                    jet_mass = jet_mass_frac*dMsink_overdt(isink)*dtnew(ilevel)*dtnew(ilevel)
-                    ! Momentum
-                    jet_mom  = jet_vel_frac * jet_mass * sqrt(factG * msink(isink) / stellar_radius)
-                    ! TODO: Correct for MHD contribution
+                    ! Proceed if within the feedback cone
+                    if(orth_dist.le.abs(cone_dist)*tan_theta_star)then
+                       ! Compute the stellar radius TODO: Needs to be interpolated
+                       stellar_radius = 396340*1d5/scale_l
 
-                    ! Account for jet weightings
-                    jet_mass = jet_mass * jet_weightings(j)
-                    jet_mom  = jet_mom  * jet_weightings(j)
+                       ! Compute jet quantities
+                       ! Mass
+                       jet_mass = jet_mass_frac*dMsink_overdt(isink)*dtnew(ilevel)
+                       ! Momentum
+                       jet_mom  = jet_vel_frac * jet_mass * sqrt(factG * msink(isink) / (stellar_radius+tiny(0.0_dp)))
+                       ! TODO: Correct for MHD contribution
 
-                    ! Account for cloud particle weightings
-                    jet_mass = jet_mass * (weight/volume) / vol_loc
-                    jet_mom  = jet_mom  * (weight/volume) / vol_loc
-                    if(agn_inj_method=='mass')then
-                       jet_mass = jet_mass * (d/density)
-                       jet_mom  = jet_mom  * (d/density)
+                       ! Account for jet weightings
+                       jet_mass = jet_mass * jet_weightings(j)
+                       jet_mom  = jet_mom  * jet_weightings(j)
+
+                       ! Account for cloud particle weightings
+                       jet_mass = jet_mass * (weight/volume) / vol_loc
+                       jet_mom  = jet_mom  * (weight/volume) / vol_loc
+                       if(agn_inj_method=='mass')then
+                          jet_mass = jet_mass * (d/density)
+                          jet_mom  = jet_mom  * (d/density)
+                       end if
+
+                       ! Do the feedback
+                       unew(indp(j,ind),1)        = unew(indp(j,ind),1)        + jet_mass
+                       unew(indp(j,ind),2:ndim+1) = unew(indp(j,ind),2:ndim+1) + jet_mom * r_rel(1:ndim) / r_len
+                       unew(indp(j,ind),neul)     = unew(indp(j,ind),neul)     + sum(jet_mom * r_rel(1:ndim)/r_len * vv(1:ndim))
+                        
+                       ! Do the MHD feedback (TODO)
+
+                       ! Account for the mass lost from the star
+                       msink(isink) = msink(isink) - jet_mass*vol_loc
+
+                       write(*,*)'Performing feedback, ',jet_mass,jet_mom,sum(jet_mom * r_rel(1:ndim)/r_len * vv(1:ndim))
+
                     end if
-
-                    ! Do the feedback
-                    unew(indp(j,ind),1)        = unew(indp(j,ind),1)        + jet_mass
-                    unew(indp(j,ind),2:ndim+1) = unew(indp(j,ind),2:ndim+1) + jet_mom * r_rel(1:ndim) / r_len
-                    unew(indp(j,ind),neul)     = unew(indp(j,ind),neul)     + sum(jet_mom * r_rel(1:ndim)/r_len * vv(1:ndim))
-                    
-                    ! Do the MHD feedback (TODO)
-
-                    ! Account for the mass of the star
-                    msink(isink) = msink(isink) - jet_mass
                  end if
 
               end if
@@ -2960,7 +2979,7 @@ subroutine read_sink_params()
        epsilon_kin,AGN_fbk_mode_switch_threshold,kin_mass_loading,bondi_use_vrel,smbh,agn,max_mass_nsc,&
        agn_acc_method,agn_inj_method,sink_descent,gamma_grad_descent,fudge_graddescent, &
        sink_constant_phys_radius,p3_mchar,z_crit_pop3,uniform_rand_seed, &
-       use_bondi_correction,jet_theta0,jet_vel_frac,jet_mass_frac
+       use_bondi_correction,jet_theta0,jet_vel_frac,jet_mass_frac,protostellar_jet
   real(dp)::scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v
 
   if(.not.cosmo) call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
@@ -3442,7 +3461,7 @@ end subroutine synchronize_sink_info
 !##############################################################################
 !##############################################################################
 !##############################################################################
-subroutine get_feedback_weighting(ind_part,np,fbk_weights)
+subroutine get_feedback_weighting(ind_part,np,tan_theta_star,fbk_weights)
    use amr_commons
    use hydro_commons
    use hydro_parameters
@@ -3451,6 +3470,7 @@ subroutine get_feedback_weighting(ind_part,np,fbk_weights)
    implicit none
 
    integer::np
+   real(dp)::tan_theta_star
    integer,dimension(1:nvector)::ind_part
    real(dp),dimension(1:nvector)::fbk_weights
    !##############################################################################
@@ -3462,8 +3482,8 @@ subroutine get_feedback_weighting(ind_part,np,fbk_weights)
    real(dp)::scale,dx_min,nx_loc
    real(dp)::total_weight,local_weight,r_len,rr,rmax,locw,theta
    real(dp),dimension(1:ndim)::xrel,r_rel
-   real(dp)::tan_theta,cone_dist,orth_dist
-   real(dp),dimension(1:ndim)::cone_dir
+   real(dp)::cone_dist,orth_dist
+   real(dp),dimension(1:ndim)::jet_axis,cone_dir
    logical::ok
    real(dp)::factG,scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v,scale_m
 
@@ -3511,12 +3531,21 @@ subroutine get_feedback_weighting(ind_part,np,fbk_weights)
                theta = acos(dot_product(xrel(:),jet_axis(:)) / rr)
 
                ! Check if this particle is close enough
+               ok=.false.
                if(rr<=rmax*2/dx_min)then
+                  cone_dir(1:ndim)=lsink(isink,1:ndim)/(sqrt(sum(lsink(isink,1:ndim)**2))+tiny(0.0_dp))
+                  cone_dist=sum(xrel(1:ndim)*cone_dir(1:ndim))
+                  orth_dist=sqrt(sum((xrel(1:ndim)-cone_dist*cone_dir(1:ndim))**2))
+                  if (orth_dist.le.abs(cone_dist)*tan_theta_star)ok=.true.
+               end if
+
+               if(ok)then
                   ! Compute weights
                   call psy_function(rr,theta,local_weight)
                   ! Sum weights
                   total_weight = total_weight + local_weight
                end if
+
             end do ! End ii loop
          end do ! End jj loop
       end do ! End kk loop
@@ -3527,7 +3556,7 @@ subroutine get_feedback_weighting(ind_part,np,fbk_weights)
       ! Return final weights
       fbk_weights(j) = locw/total_weight
         
-      !write(*,*)'wtest:',ind_part(j),isink,r_rel,r_len,locw,total_weight,fbk_weights(j)
+      !write(*,*)'wtest:',ind_part(j),isink,r_rel,r_len,theta,locw,total_weight,fbk_weights(j)
 
    end do ! End j loop
 
@@ -3543,7 +3572,8 @@ subroutine psy_function(r,theta,psy)
    real(kind=8)::r,theta,psy
 
    ! Distribution function for protostellar jets
-   psy = (log(2/jet_theta0)*sin(theta)**2 + jet_theta0**2)**(-1)
+   !psy = (log(2/jet_theta0)*sin(theta)**2 + jet_theta0**2)**(-1)
+   psy = 1
 
 end subroutine psy_function
 !##############################################################################
