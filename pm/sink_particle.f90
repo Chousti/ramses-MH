@@ -1295,7 +1295,7 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
 
                     ! Proceed if within the feedback cone
                     if(orth_dist.le.abs(cone_dist)*tan_theta_star)then
-                       ! Compute the stellar radius TODO: Needs to be interpolated
+                       !TODO (Code): Set radius of the protostar based on other properties. Currently the solar radius is used.
                        stellar_radius = 396340*1d5/scale_l
 
                        ! Compute jet quantities
@@ -1303,7 +1303,7 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
                        jet_mass = jet_mass_frac*dMsink_overdt(isink)*dtnew(ilevel)
                        ! Momentum
                        jet_mom  = jet_vel_frac * jet_mass * sqrt(factG * msink(isink) / (stellar_radius+tiny(0.0_dp)))
-                       ! TODO: Correct for MHD contribution
+                       ! TODO (Nick): Correct for MHD contribution
 
                        ! Account for jet weightings
                        jet_mass = jet_mass * jet_weightings(j)
@@ -1322,12 +1322,10 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
                        unew(indp(j,ind),2:ndim+1) = unew(indp(j,ind),2:ndim+1) + jet_mom * r_rel(1:ndim) / r_len
                        unew(indp(j,ind),neul)     = unew(indp(j,ind),neul)     + sum(jet_mom * r_rel(1:ndim)/r_len * vv(1:ndim))
                         
-                       ! Do the MHD feedback (TODO)
+                       ! TODO (Nick): Launch the magnetized feedback
 
                        ! Account for the mass lost from the star
                        msink(isink) = msink(isink) - jet_mass*vol_loc
-
-                       write(*,*)'Performing feedback, ',jet_mass,jet_mom,sum(jet_mom * r_rel(1:ndim)/r_len * vv(1:ndim))
 
                     end if
                  end if
