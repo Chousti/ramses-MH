@@ -1,6 +1,9 @@
 subroutine read_hydro_params(nml_ok)
   use amr_commons
   use hydro_commons
+#ifdef RTZ
+  use rtz_module
+#endif
   use mpi_mod
   implicit none
   logical::nml_ok
@@ -13,6 +16,9 @@ subroutine read_hydro_params(nml_ok)
   logical :: dummy
 #ifdef SOLVERmhd
   real(dp)::em_bound
+#endif
+#ifdef RTZ
+  integer :: counter
 #endif
 
   !--------------------------------------------------
@@ -464,6 +470,15 @@ subroutine read_hydro_params(nml_ok)
   idelay=imetal
 #if NMETALS > 1
   idelay=imetal+nmetals
+#ifdef RTZ
+  counter = 0
+  do i=1,n_elements
+     if (elements(i)%atomic_number.gt.0) then
+        elements(i)%u_hydro_idx = imetal + counter
+        counter = counter + 1
+     end if
+  end do
+#endif
 #else
   if(metal)idelay=imetal+1
 #endif

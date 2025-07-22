@@ -68,6 +68,7 @@ subroutine init_flow_fine(ilevel)
 
 #ifdef RTZ
   integer::counter,ielements,jions
+  real(dp)::total_element_mass
 #endif
 
   if(numbtot(1,ilevel)==0)return
@@ -272,11 +273,13 @@ subroutine init_flow_fine(ilevel)
            if(myid==1)write(*,*)'Initialize corresponding variable to default value'
            if(ncache>0)then
               init_array=0d0
+#ifndef RTZ
               ! Default value for metals
               if(cosmo.and.ivar==imetal.and.metal)init_array=z_ave*0.02d0 ! from solar units
               ! Default value for ionization fraction
               if(cosmo)xval=sqrt(omega_m)/(h0/100*omega_b) ! From the book of Peebles p. 173
               if(cosmo.and.ivar==ixion.and.aton)init_array=1.2d-5*xval
+#endif
            endif
         endif
 
@@ -291,9 +294,28 @@ subroutine init_flow_fine(ilevel)
               if(ivar==4)init_array=dfact(ilevel)*vfact(1)*dx_loc/dxini(ilevel)*init_array/vfact(ilevel)
               if(ivar==neul)init_array=(1.0d0+init_array)*T2_start/scale_T2
 #ifdef RTZ
-              if(ivar.eq.imetal+0) init_array = 0.76d0 ! Hydrogen
-              if(ivar.eq.imetal+1) init_array = 0.24d0 ! Helium
-              !TODO(code): make general case of arbitrary metallicity
+              total_element_mass = 0.d0
+              if(ivar.ge.imetal.and.ivar.lt.iIons) then
+                 do ielements=1,n_elements
+                    if (elements(ielements)%atomic_number.gt.0.d0) then
+                       if (ielements.gt.2) then 
+                          total_element_mass = total_element_mass + (elements(ielements)%atomic_mass * elements(ielements)%z_solar * z_ave)
+                       else
+                          total_element_mass = total_element_mass + (elements(ielements)%atomic_mass * elements(ielements)%z_solar)
+                       end if
+                    end if
+                 end do
+
+                 do ielements=1,n_elements
+                    if(ivar.eq.elements(ielements)%u_hydro_idx) then
+                       if (ielements.gt.2) then 
+                          init_array = (elements(ielements)%atomic_mass * elements(ielements)%z_solar) * z_ave / total_element_mass
+                       else
+                          init_array = (elements(ielements)%atomic_mass * elements(ielements)%z_solar) / total_element_mass
+                       end if 
+                    end if 
+                 end do 
+              end if
 
               ! Now set all ionization states to neutral
               counter = 0

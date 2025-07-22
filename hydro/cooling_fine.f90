@@ -149,7 +149,7 @@ subroutine coolfine1(ind_grid,ngrid,ilevel)
      nCOM = del_star*omega_b*rhoc*(h0/100)**2/aexp**3*grackle_HydrogenFractionByMass/mH
 #else
 #ifdef RTZ
-     nCOM = del_star*omega_b*rhoc*(h0/100)**2/aexp**3*0.76/mH !TODO(code) update this
+     nCOM = del_star*omega_b*rhoc*(h0/100)**2/aexp**3*0.76/mH 
 #else
      nCOM = del_star*omega_b*rhoc*(h0/100)**2/aexp**3*X/mH
 #endif

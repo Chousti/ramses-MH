@@ -275,8 +275,13 @@ module amr_parameters
   integer::i_mv_vx=-1,    i_mv_vy=-1,         i_mv_vz=-1
   integer::i_mv_dm=-1,    i_mv_stars=-1,      i_mv_lum=-1
   integer::i_mv_var=-1,   i_mv_xh2=-1,        i_mv_xhi=-1
-  integer:: i_mv_xhii=-1, i_mv_xheii=-1,      i_mv_xheiii=-1
+  integer::i_mv_xhii=-1,  i_mv_xheii=-1,      i_mv_xheiii=-1
   integer::i_mv_fp=-1,    i_mv_pmag=-1
+#ifdef RTZ
+  integer::i_mv_ha=-1,      i_mv_hb=-1,      i_mv_o3_5007=-1
+  integer::i_mv_o3_4959=-1, i_mv_o3_4363=-1, i_mv_o2_3728=-1
+  integer::i_mv_o2_3726=-1, i_mv_n2_6583=-1
+#endif
   integer,dimension(1:50)::movie_vars=-1
   integer,dimension(1:50)::movie_var_number=1
 

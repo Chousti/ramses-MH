@@ -6,6 +6,7 @@ module metal_yields_module
   private  ! everything is private by default
   public :: initialize_SN_yields, get_portinari_ejecta_mass, get_portinari_stellar_lifetime
   public :: getStarAgeMyr, get_pop3_lifetime_myr, get_popIII_sn_energy, get_popIII_ejecta
+  public :: get_SNIa_ejecta, get_stellar_lifetime_low_mass
 
   integer, parameter::portinati_N_metal = 5
   integer, parameter::portinati_N_mass = 14
@@ -199,6 +200,39 @@ FUNCTION get_popIII_ejecta(mass, species, is_HN) result(fq)
 
 END FUNCTION get_popIII_ejecta
 
+FUNCTION get_SNIa_ejecta(species) result(ejecta)
+  ! Ejecta from Seitenzahl 2013
+  implicit none
+  integer, intent(in) :: species
+  real(dp) :: ejecta 
+
+  ejecta = 0.d0
+
+  select case (species)
+    case (1) ! Hydrogen
+      ejecta = 0.d0
+    case (2) ! Helium
+      ejecta = 0.d0
+    case (6) ! Carbon
+      ejecta = 3.04d-03
+    case (7) ! Nitrogen
+      ejecta = 3.21d-06
+    case (8) ! Oxygen
+      ejecta = 1.01d-01
+    case (10) ! Neon
+      ejecta = 3.57d-03
+    case (12) ! Magnesium
+      ejecta = 1.54d-02
+    case (14) ! Silicon
+      ejecta = 2.87d-01
+    case (16) ! Sulfur
+      ejecta = 1.15d-01
+    case (26) ! Iron
+      ejecta = 7.40d-01
+  end select
+
+END FUNCTION get_SNIa_ejecta
+
 FUNCTION get_portinari_ejecta_mass(metallicity, mass, species) result(fq)
   implicit none
   real(dp), intent(in) :: metallicity, mass
@@ -333,6 +367,23 @@ FUNCTION get_portinari_stellar_lifetime(metallicity, mass) result(fq)
         f22 * (xq - x1) * (yq - y1)   &
        ) * ((yq/mass)**(-1.4d0)) ! Last factor used to extrapolate beyond 9 solar mass limit --> empirically found by harley to put 8 Msol star at 40 Myr lifetime
 END FUNCTION get_portinari_stellar_lifetime
+
+FUNCTION get_stellar_lifetime_low_mass(metallicity, mass) result(fq)
+   ! Simple function to get the main-sequence lifetime of low-mass stars
+   ! We simply scale the lifetime of an 8 Msol star by M^-2.5
+   ! --> TODO(code): eventually replace this with something more accurate
+   implicit none
+   real(dp), intent(in) :: metallicity, mass
+   real(dp) :: fq
+   real(dp) :: main_sequence_lifetime_8Msun
+
+   ! Main sequence lifetime of an 8 Msol star of the same metallicity
+   main_sequence_lifetime_8Msun = get_portinari_stellar_lifetime(metallicity, 8.d0)
+
+   ! Use homology to scale the lifetime
+   fq = main_sequence_lifetime_8Msun * ((8.d0 / mass)**(2.5d0))
+
+END FUNCTION
 
 FUNCTION getStarAgeMyr(birth_time) result(age_star)
    use amr_commons, only: dp, use_proper_time
