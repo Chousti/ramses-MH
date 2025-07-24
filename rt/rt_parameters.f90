@@ -174,6 +174,7 @@ module rt_parameters
   logical::rtz_include_HM12_UVB=.true.
   logical::isH2_rtz=.false.
   logical::isCO_rtz=.false.
+  real(dp)::rtz_H2_clumping=1.d0
   real(dp)::rtz_UV_background_G0=0.d0
   real(dp)::rtz_primary_cosmic_ray_ionization_rate=0.d0
   real(dp)::rtz_max_cool_timestep=1.d11

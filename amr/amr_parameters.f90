@@ -83,6 +83,7 @@ module amr_parameters
   integer::nx=1,ny=1,nz=1                  ! Number of coarse cells in each dimension
   integer::levelmin=1                      ! Full refinement up to levelmin
   integer::nlevelmax=1                     ! Maximum number of level
+  integer::levelmax_current=1              ! Current allowed levelmax --> changed to keep fixed physical resolution
   integer::ngridmax=0                      ! Maximum number of grids
   integer,dimension(1:MAXLEVEL)::nexpand=1 ! Number of mesh expansion
   integer::nexpand_bound=1                 ! Number of mesh expansion for virtual boundaries

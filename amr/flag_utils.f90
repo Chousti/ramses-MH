@@ -333,6 +333,23 @@ subroutine userflag_fine(ilevel)
      if(ilevel.gt.nlevelmax_part+nlevel_collapse)then
         if(dx_loc<2d0*dx_min*(0.8/aexp)) prevent_refine=.true.
      endif
+
+     ! Get the current maximum allowed levelmax
+     ! Probably redundant doing this here...
+     ! We want to force stars and sinks to form
+     ! on the current max level of refinement
+     levelmax_current = levelmin
+     do ind=levelmin,nlevelmax
+        ! Finest cell size
+        dx_min=(0.5D0**nlevelmax)*scale
+
+        if(ind.gt.nlevelmax_part+nlevel_collapse)then
+           if((0.5D0**ind)*scale<2d0*dx_min*(0.8/aexp)) then 
+              levelmax_current = ind
+              exit ! Exit level loop on first instance
+           end if
+        endif
+     end do
   endif
 
   if(prevent_refine)return

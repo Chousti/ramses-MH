@@ -148,7 +148,7 @@ SUBROUTINE read_rt_params(nml_ok)
        & ,rtz_include_collisional_ionization, rtz_include_photoionization&
        & ,rtz_include_cosmic_ray_ionization, rtz_include_charge_exchange &
        & ,rtz_include_dust_recombination, rtz_include_HM12_UVB           &
-       & ,isH2_rtz, isCO_rtz, rtz_UV_background_G0                       &
+       & ,isH2_rtz, isCO_rtz, rtz_UV_background_G0, rtz_H2_clumping      &
        & ,rtz_primary_cosmic_ray_ionization_rate, rtz_max_cool_timestep  &
        & ,rtz_eqm_min_its                                                &
 #endif
