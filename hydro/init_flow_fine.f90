@@ -317,14 +317,23 @@ subroutine init_flow_fine(ilevel)
                  end do 
               end if
 
-              ! Now set all ionization states to neutral
+              ! Now set all ionization states to neutral except for hydrogen
+              ! We use an initial parameter to give a small electron fraction
+              ! which one should compute with recfast
               counter = 0
               do ielements=1,n_elements
                  do jions=1,elements(ielements)%n_ions
                     if (jions.eq.1) then 
                        if (ivar.eq.iIons+counter) then
-                          init_array = 1.d0 ! Initialize every species to neutral
+                          if (ielements.eq.1) then
+                             init_array = 1.d0 - init_xe 
+                          else
+                             init_array = 1.d0 ! Initialize every species to neutral
+                          endif
                        end if
+                    end if
+                    if (jions.eq.2 .and. ielements.eq.1 .and. ivar.eq.iIons+counter) then 
+                       init_array = init_xe 
                     end if
                     counter = counter + 1
                  end do

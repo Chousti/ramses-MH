@@ -39,6 +39,9 @@ subroutine read_hydro_params(nml_ok)
 #if NENER>0
        & ,prad_region &
 #endif
+#ifdef RTZ
+       & ,init_xe,init_T &
+#endif
        & ,omega_b,alpha_dense_core,beta_dense_core,crit_dense_core,delta_rho
 
   ! Hydro parameters

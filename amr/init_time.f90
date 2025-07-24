@@ -296,8 +296,11 @@ subroutine init_time
         ! Reonization redshift has to be later than starting redshift
         z_reion=min(1d0/(1.1d0*aexp_ini)-1d0,z_reion)
 #ifdef RTZ
-        call rtz_set_model(dble(h0/100.),dble(omega_b),dble(omega_m),dble(omega_l), &
-             & dble(aexp_ini),T2_sim)
+      !   call rtz_set_model(dble(h0/100.),dble(omega_b),dble(omega_m),dble(omega_l), &
+      !        & dble(aexp_ini),T2_sim)
+        ! Grab the initial temperature from the parameter file. This should be
+        ! computed with recfast or equivalent
+        T2_sim = init_T
 #else
         call rt_set_model(dble(h0/100.),dble(omega_b),dble(omega_m),dble(omega_l), &
              & dble(aexp_ini),T2_sim)

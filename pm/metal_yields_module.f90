@@ -201,7 +201,7 @@ FUNCTION get_popIII_ejecta(mass, species, is_HN) result(fq)
 END FUNCTION get_popIII_ejecta
 
 FUNCTION get_SNIa_ejecta(species) result(ejecta)
-  ! Ejecta from Seitenzahl 2013
+  ! Ejecta from Seitenzahl 2013 - N100 model
   implicit none
   integer, intent(in) :: species
   real(dp) :: ejecta 

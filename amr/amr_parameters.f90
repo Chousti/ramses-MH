@@ -281,6 +281,8 @@ module amr_parameters
   integer::i_mv_ha=-1,      i_mv_hb=-1,      i_mv_o3_5007=-1
   integer::i_mv_o3_4959=-1, i_mv_o3_4363=-1, i_mv_o2_3728=-1
   integer::i_mv_o2_3726=-1, i_mv_n2_6583=-1
+  real(dp)::init_xe=0.d0
+  real(dp)::init_T=200.d0
 #endif
   integer,dimension(1:50)::movie_vars=-1
   integer,dimension(1:50)::movie_var_number=1
