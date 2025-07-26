@@ -618,6 +618,7 @@ subroutine grow_sink(ilevel,on_creation)
   use metal_yields_module
   use imf_module
   use rtz_module
+  use SED_module, only: interpolate_popii_age
   use constants, only: M_sun
 #endif
   implicit none
@@ -796,12 +797,8 @@ subroutine grow_sink(ilevel,on_creation)
               ! Convert metallicity to format needed by portinari
               star_met = (10.d0**(star_met - 8.69d0)) * 0.02d0
 
-              ! Get the main-sequence lifetime for massive stars
-              if (msink_actual(isink).ge.8.d0) then 
-                 ms_lifetime = get_portinari_stellar_lifetime(star_met,msink_actual(isink))
-              else
-                 ms_lifetime = get_stellar_lifetime_low_mass(star_met,msink_actual(isink))
-              end if
+              ! Get the main-sequence lifetime 
+              ms_lifetime = interpolate_popII_age(msink_actual(isink) * scale_m/M_sun)
 
               ! Check if the stellar age is older than the main-sequence lifetime
               if (star_age_Myr.gt.ms_lifetime) then

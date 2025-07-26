@@ -1235,7 +1235,7 @@ contains
     ! Update the timestep for the next iteration:
    !  dt_rec = 0.5d0 * ddt(icell) / ((0.01d0 + fracMax)**0.5d0)
     dt_rec = 0.9d0 * ddt(icell) / ((0.07d0 + fracMax)**0.3d0)
-    dt_rec = min(dt_rec,1E12 * min(TK/100.0,1.0) * min((1.0/nElement_dep(1)),1.0) * min(sqrt(1.0/UV_background_G0),1.0))
+    dt_rec = min(dt_rec,1E12 * min(TK/100.0,1.0) * min((1.0/nElement_dep(1)),1.0) * min(sqrt(1.0/max(UV_background_G0,1.d-10)),1.0))
     dt_rec = min(dt_rec,rtz_max_cool_timestep)
     dt_ok = .true.
     code=0

@@ -136,7 +136,7 @@ SUBROUTINE gather_ioni_flux(dt,sink_ioni_flux)
   use pm_commons
   use rt_parameters
   use sink_feedback_parameters
-  use SED_module, only: interpolate_popIII_table, get_popIII_temp_from_mass
+  use SED_module, only: interpolate_popII_table, interpolate_popIII_table, get_popIII_temp_from_mass
   use constants, only: M_sun
   implicit none
 
@@ -145,7 +145,7 @@ SUBROUTINE gather_ioni_flux(dt,sink_ioni_flux)
   integer:: istellar,isink,ig
   real(dp)::M_stellar,Flux_stellar
   real(dp),dimension(1:ngroups)::nphotons
-  real(dp)::star_effective_temp, star_met
+  real(dp)::star_effective_temp, star_met, star_met_fe
   real(dp)::scale_nH,scale_T2,scale_l,scale_d,scale_t,scale_v, scale_msun
 
   call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
@@ -156,22 +156,22 @@ SUBROUTINE gather_ioni_flux(dt,sink_ioni_flux)
 #ifdef INDIVIDUAL_SINK_STARS
   do isink=1,nsink
      !Only main-sequence sinks emit
-   !   if (evolution_flag(isink).eq.0) then 
+     if (evolution_flag(isink).eq.0) then 
 
-        ! Get the surface temperature of the star
+        ! Get the stellar metallicity (in terms of oxygen abundance)
         star_met = 12.d0 + LOG10((sink_metallicity(isink,5)+1.d-40)/(sink_metallicity(isink,1) * 15.9994d0))
-        if (star_met.lt.z_crit_pop3) then
-           star_effective_temp = get_popIII_temp_from_mass(msink_actual(isink) * scale_msun)
-        else
-           ! TODO(code): read this from stellar evolution files
-           star_effective_temp = 2.d4
-        end if
 
         do ig=1,ngroups
            !TODO(code): for now assume everything is a modified blackbody
-           sink_ioni_flux(isink,ig) = interpolate_popIII_table(star_effective_temp,ig)
+           if (star_met.lt.z_crit_pop3) then
+              star_effective_temp = get_popIII_temp_from_mass(msink_actual(isink) * scale_msun)
+              sink_ioni_flux(isink,ig) = interpolate_popIII_table(star_effective_temp,ig)
+           else
+              star_met_fe = LOG10((sink_metallicity(isink,10)+1.d-40)/(sink_metallicity(isink,1) * 55.854d0)) - LOG10(3.16E-05)
+              sink_ioni_flux(isink,ig) = interpolate_popII_table(star_met_fe,msink_actual(isink) * scale_msun,ig)
+           end if
         end do
-   !   end if
+     end if
   end do
 #else
   do istellar=1,nstellar
