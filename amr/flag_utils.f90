@@ -336,8 +336,6 @@ subroutine userflag_fine(ilevel)
 
      ! Get the current maximum allowed levelmax
      ! Probably redundant doing this here...
-     ! We want to force stars and sinks to form
-     ! on the current max level of refinement
      levelmax_current = levelmin
      do ind=levelmin,nlevelmax
         ! Finest cell size
@@ -352,7 +350,7 @@ subroutine userflag_fine(ilevel)
      end do
 
      ! Update the sink to sit on the current levelmax
-     if(sink) nlevelmax_sink = levelmax_current
+   !   if(sink) nlevelmax_sink = levelmax_current
   endif
 
   if(prevent_refine)return

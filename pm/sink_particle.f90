@@ -193,10 +193,11 @@ subroutine create_cloud_from_sink
   ! Mesh spacing in that level
   nx_loc=(icoarse_max-icoarse_min+1)
   scale=boxlen/dble(nx_loc)
-  dx_min=scale*0.5D0**nlevelmax_sink
-  if (sink_constant_phys_radius) then 
-     dx_min=dx_min/aexp
-  end if
+  dx_min=scale*0.5D0**nlevelmax_sink/aexp
+!   dx_min=scale*0.5D0**nlevelmax_sink
+!   if (sink_constant_phys_radius) then 
+!      dx_min=dx_min/aexp
+!   end if
    
 
   rmax=dble(ir_cloud)*dx_min
@@ -517,10 +518,11 @@ subroutine collect_acczone_avg_np(ind_grid,ind_part,ind_grid_part,ng,np,ilevel)
   ! Compute volume of each cloud particle
   nx_loc=(icoarse_max-icoarse_min+1)
   scale=boxlen/dble(nx_loc)
-  dx_cloud=(0.5D0**nlevelmax_sink)*scale/2 ! factor of 2 hard-coded
-  if (sink_constant_phys_radius) then
-     dx_cloud = dx_cloud / aexp
-  end if
+  dx_cloud=(0.5D0**nlevelmax_sink)*scale/aexp/2
+!   dx_cloud=(0.5D0**nlevelmax_sink)*scale/2 ! factor of 2 hard-coded
+!   if (sink_constant_phys_radius) then
+!      dx_cloud = dx_cloud / aexp
+!   end if
   vol_cloud=dx_cloud**ndim
 
   ! Copy cloud particle coordinates
@@ -998,10 +1000,11 @@ subroutine accrete_sink(ind_grid,ind_part,ind_grid_part,ng,np,ilevel,on_creation
   scale=boxlen/dble(nx_loc)
   dx_loc=dx*scale
   vol_loc=dx_loc**ndim
-  dx_min=scale*0.5D0**nlevelmax_sink
-  if (sink_constant_phys_radius) then 
-     dx_min=dx_min/aexp
-  end if
+  dx_min=scale*0.5D0**nlevelmax_sink/aexp
+!   dx_min=scale*0.5D0**nlevelmax_sink
+!   if (sink_constant_phys_radius) then 
+!      dx_min=dx_min/aexp
+!   end if
   vol_min=dx_min**ndim
 
   ! Compute volume of each cloud particle
@@ -1403,10 +1406,11 @@ subroutine compute_accretion_rate(write_sinks)
   scale_m=scale_d*scale_l**ndim
   nx_loc=(icoarse_max-icoarse_min+1)
   scale=boxlen/dble(nx_loc)
-  dx_min=scale*0.5D0**nlevelmax_sink
-  if (sink_constant_phys_radius) then 
-     dx_min=dx_min/aexp
-  end if
+  dx_min=scale*0.5D0**nlevelmax_sink/aexp
+!   dx_min=scale*0.5D0**nlevelmax_sink
+!   if (sink_constant_phys_radius) then 
+!      dx_min=dx_min/aexp
+!   end if
   d_star=n_star/scale_nH
 
   ! Compute sink particle accretion rate by averaging contributions from all levels
@@ -1611,10 +1615,11 @@ subroutine print_sink_properties(dMEDoverdt,dMEDoverdt_smbh,rho_inf,r2)
   skip_loc(2)=dble(jcoarse_min)
   skip_loc(3)=dble(kcoarse_min)
   scale=boxlen/dble(nx_loc)
-  dx_min=scale*0.5D0**nlevelmax_sink
-  if (sink_constant_phys_radius) then 
-     dx_min=dx_min/aexp
-  end if
+  dx_min=scale*0.5D0**nlevelmax_sink/aexp
+!   dx_min=scale*0.5D0**nlevelmax_sink
+!   if (sink_constant_phys_radius) then 
+!      dx_min=dx_min/aexp
+!   end if
 
   ! Scaling factors
   call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
@@ -2247,10 +2252,11 @@ subroutine update_sink(ilevel)
   ! Mesh spacing in that level
   nx_loc=(icoarse_max-icoarse_min+1)
   scale=boxlen/dble(nx_loc)
-  dx_min=scale*0.5D0**nlevelmax_sink
-  if (sink_constant_phys_radius) then 
-     dx_min=dx_min/aexp
-  end if
+  dx_min=scale*0.5D0**nlevelmax_sink/aexp
+!   dx_min=scale*0.5D0**nlevelmax_sink
+!   if (sink_constant_phys_radius) then 
+!      dx_min=dx_min/aexp
+!   end if
   rmax=dble(ir_cloud)*dx_min ! Linking length in physical units
   rmax2=rmax*rmax
 
@@ -2738,10 +2744,11 @@ subroutine f_gas_sink(ilevel)
   scale=boxlen/dble(nx_loc)
   dx_loc=dx*scale
   vol_loc=dx_loc**ndim
-  dx_min=scale*0.5D0**nlevelmax_sink
-  if (sink_constant_phys_radius) then 
-     dx_min=dx_min/aexp
-  end if
+  dx_min=scale*0.5D0**nlevelmax_sink/aexp
+!   dx_min=scale*0.5D0**nlevelmax_sink
+!   if (sink_constant_phys_radius) then 
+!      dx_min=dx_min/aexp
+!   end if
   ssoft=sink_soft*dx_min
 
   ! Set position of cell centers relative to grid centre
