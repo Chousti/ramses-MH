@@ -8,6 +8,7 @@ SUBROUTINE update_sink_RT_feedback
 ! Turn on RT advection if needed.
 ! Update photon group properties from stellar populations.
 !-------------------------------------------------------------------------
+  use amr_parameters, only: aexp
   use rt_parameters
   use sink_feedback_parameters
 #ifdef INDIVIDUAL_SINK_STARS
@@ -20,9 +21,14 @@ SUBROUTINE update_sink_RT_feedback
   endif
 
 #ifdef INDIVIDUAL_SINK_STARS
-  if(nsink>0)then
-     rt_advect=.true.
-  endif
+  if(.not.rt_advect) then 
+     if(nsink>0)then
+        if(myid==1) write(*,*) '*****************************************'
+        if(myid==1) write(*,*) 'Stellar RT turned on at a=',aexp
+        if(myid==1) write(*,*) '*****************************************'
+        rt_advect=.true.
+     endif
+   end if
 #endif
 
 END SUBROUTINE update_sink_RT_feedback
