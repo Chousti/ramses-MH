@@ -280,6 +280,7 @@ subroutine userflag_fine(ilevel)
   use amr_commons
   use hydro_commons
   use cooling_module
+  use pm_parameters, only: nlevelmax_sink
   implicit none
   integer::ilevel
   ! -------------------------------------------------------------------
