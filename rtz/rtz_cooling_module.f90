@@ -619,7 +619,7 @@ contains
 
           ! Deal with molecules separately
           if (elements(1)%atomic_number.gt.0 .and. isH2_rtz) then
-             if (isLW(igroup).eq.1.d0) then 
+             if (isLW(igroup).eq.1) then 
                 phAbs(igroup) = 0.5d0 * nElement_dep(1) * dXion(1, 3) * signc(igroup,1,3) * f_shd  ! s-1
              else
                 phAbs(igroup) = 0.5d0 * nElement_dep(1) * dXion(1, 3) * signc(igroup,1,3)
@@ -827,10 +827,10 @@ contains
        ! Photodissociation from the local radiation field
        if (rtz_include_photoionization.and.rt_advect) then
           do igroup=1,nGroups
-             if (isLW(igroup).eq.1.d0) then
+             if (isLW(igroup).eq.1) then
                 de_H2 = de_H2 + (dXion(1,3) * SUM(signc(igroup,1,3) * dNp * f_shd))
              else
-                de_H2 = de_H2 + (dXion(1,3) * SUM(signc(igroup,1,3) * dNp * f_shd))
+                de_H2 = de_H2 + (dXion(1,3) * SUM(signc(igroup,1,3) * dNp))
              end if  
           end do
        end if

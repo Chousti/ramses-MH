@@ -639,7 +639,7 @@ subroutine trim_clumps
 #if NDIM==3
   use amr_commons
   use clfind_commons
-  use pm_parameters, only:nlevelmax_sink
+  use pm_parameters, only:nlevelmax_sink, sink_constant_phys_radius
   use pm_commons, only:ir_cloud
   implicit none
 

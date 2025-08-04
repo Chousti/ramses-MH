@@ -8,7 +8,7 @@ SUBROUTINE update_sink_RT_feedback
 ! Turn on RT advection if needed.
 ! Update photon group properties from stellar populations.
 !-------------------------------------------------------------------------
-  use amr_parameters, only: aexp
+  use amr_commons, only: aexp, myid
   use rt_parameters
   use sink_feedback_parameters
 #ifdef INDIVIDUAL_SINK_STARS

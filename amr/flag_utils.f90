@@ -350,7 +350,7 @@ subroutine userflag_fine(ilevel)
      end do
 
      ! Update the sink to sit on the current levelmax
-   !   if(sink) nlevelmax_sink = levelmax_current
+     if(sink) nlevelmax_sink = levelmax_current
   endif
 
   if(prevent_refine)return

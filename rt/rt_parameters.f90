@@ -160,7 +160,10 @@ module rt_parameters
   ! H2 parameters ------------------------------------------------------------------------
   ! Self-shielding factor, see Nickerson, Teyssier, & Rosdahl (2018)
   ! Array to track which groups are in the Lyman-Werner band, 11.2 eV to 13.6 eV
-  real(dp),dimension(1:NGROUPS)::ssh2 = 1d0, isLW = 0d0
+  real(dp),dimension(1:NGROUPS)::ssh2 = 1d0
+#ifndef RTZ
+  real(dp),dimension(1:NGROUPS)::isLW = 0d0
+#endif
 
 #ifdef RTZ
   ! RTZ parameters -----------------------------------------------------------------------
@@ -173,6 +176,7 @@ module rt_parameters
   logical::rtz_include_dust_recombination=.true.
   logical::rtz_include_HM12_UVB=.true.
   logical::isH2_rtz=.false.
+  integer,dimension(1:NGROUPS)::isLW=0
   logical::isCO_rtz=.false.
   real(dp)::rtz_H2_clumping=1.d0
   real(dp)::rtz_UV_background_G0=0.d0

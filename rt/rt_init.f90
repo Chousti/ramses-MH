@@ -454,7 +454,11 @@ SUBROUTINE read_rt_groups()
         if((groupL0(i) .ge. 11.2) .and. (groupL1(i) .le. 13.6)          &
            .and. (groupL0(i) .le. 13.6) .and. (groupL1(i) .ge. 11.2))then
            ssh2(i) = 4d2 ! H2 self-shielding factor
+#ifndef RTZ
            isLW(i) = 1d0 ! Index for LW groups
+#else
+           isLW(i) = 1 ! Index for LW groups
+#endif
         endif
     enddo
   endif
