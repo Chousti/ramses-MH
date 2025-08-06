@@ -350,6 +350,9 @@ subroutine init_time
   ! Initialize the metal yields
   call initialize_SN_yields()
 
+  ! Initialize rt
+  call update_rt_c
+
 #endif
 
 #endif

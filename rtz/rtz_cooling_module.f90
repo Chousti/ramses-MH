@@ -389,6 +389,11 @@ SUBROUTINE rtz_solve_cooling(T2, aexp, xion, nElement, nCO, &
       loopcnt=0 !; n_cool_cells=n_cool_cells+nCell     !             Statistics
       do while (nAct .gt. 0)      ! Iterate while there are still active cells
          loopcnt=loopcnt+1 !  ;   tot_cool_loopcnt=tot_cool_loopcnt+nAct
+         if (loopcnt.gt.100000) then
+            write(*,*)ilevel,rt_c_cgs(ilevel)
+            write(*,*) "Too high loopcnt",loopcnt
+            stop
+         end if
          nAct_next=0                     ! Active cells for the next iteration
          do ia=1,nAct                             ! Loop over the active cells
             i = indAct(ia)                        !                 Cell index

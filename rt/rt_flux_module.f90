@@ -335,7 +335,7 @@ SUBROUTINE cmp_rt_faces(uin,iFlx,dx,dy,dz,dt,iP0,ngrid,ilevel)
   real(dp)::dx, dy, dz, dt
   integer ::iP0, iP1, nGrid, ilevel !------------------------------------
   real(dp),save, &                                     !   Central fluxes
-           dimension(nvector,iu1:iu2,ju1:ju2,ku1:ku2, ndim+1, ndim)::cFlx
+           dimension(nvector,iu1:iu2,ju1:ju2,ku1:ku2, ndim+1, ndim)::cFlx=0.
   real(dp),save, &                                     ! Cell eigenvalues
         dimension(nvector,iu1:iu2,ju1:ju2,ku1:ku2, ndim)::lmin=0.,lmax=0.
   ! Upwards and downwards fluxes and states of the group

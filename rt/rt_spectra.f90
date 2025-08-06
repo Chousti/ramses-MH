@@ -1267,6 +1267,7 @@ FUNCTION blackbody(T, lambda) result(B_lam)
   ! cross sections 
   ! T --> temeprature [K]
   ! lambda --> wavelengths [A] 
+  use safe_math, only: safe_exp
   use constants, only: c_cgs, hplanck, kB
   implicit none
   real(kind=8), intent(in):: T, lambda
@@ -1278,7 +1279,7 @@ FUNCTION blackbody(T, lambda) result(B_lam)
 
   ! now compute B_lam
   B_lam = 2.d0 * hplanck * c_cgs * c_cgs / (lambda_cm**5.d0)
-  B_lam = B_lam * (1.d0 / (exp(hplanck * c_cgs / (lambda_cm * kB * T)) - 1.d0))
+  B_lam = B_lam * (1.d0 / (safe_exp(hplanck * c_cgs / (lambda_cm * kB * T)) - 1.d0))
 
 END FUNCTION blackbody
 

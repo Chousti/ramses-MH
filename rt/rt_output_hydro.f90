@@ -232,11 +232,6 @@ SUBROUTINE write_group_props(update, lun)
            write(lun, 906) elements(iE)%element_name, group_cse(ip,iE,1:elements(iE)%n_ions+elements(iE)%n_mol-1)
         end if
      end do
-     ! Deal with Molecular hydrogen separately
-     if (isH2_rtz) then 
-           write(*, *) '  csn    [cm^2]  = ', group_csn(ip,1,3)
-           write(*, *) '  cse    [cm^2]  = ', group_cse(ip,1,3)
-     end if
 #else
      write(lun, 905) group_csn(ip,:)
      write(lun, 906) group_cse(ip,:)

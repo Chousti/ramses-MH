@@ -873,10 +873,17 @@ subroutine grow_sink(ilevel,on_creation)
               ! Put the star on the main sequence if we have reached or exceeded the target mass
               ! If it's a group of low mass stars, set the flag to -2
               if (evolution_flag(isink).eq.1) then
+                 if (myid.eq.1) then
+                    write(*,*) "Sink ",isink," with mass ",msink_actual(isink) * scale_m/M_sun," raeched the main-sequence"
+                 end if
                  evolution_flag(isink) = 0
               else 
                  evolution_flag(isink) = -2
               end if
+
+              ! Now need to reset msink_actual because we probably overshot the mass by a small amount
+              ! This will allow us to compute stellar evolution more accurately
+              msink_actual(isink) = msink(isink)
            end if
         end if
 
@@ -1489,8 +1496,17 @@ subroutine compute_accretion_rate(write_sinks)
            if((0.5*msink(isink)/c2)<(ir_cloud*dx_min))then
               dMsink_overdt(isink)=dMBHoverdt(isink)
            end if
-         end if
-      end if
+        end if
+     end if
+
+#ifdef INDIVIDUAL_SINK_STARS
+     ! Limit accretion rate so what we don't overshoot the mass by too much
+     ! This only matters in the case of strong accretion
+     if (msink(isink) + dMsink_overdt(isink) * dtnew(levelmax_current) .gt. msink_actual(isink)) then
+        ! Small factor needed in the denominator so we overshoot by a little
+        dMsink_overdt(isink) = (msink_actual(isink) - msink(isink)) / (0.99d0 * dtnew(levelmax_current)) 
+     end if
+#endif
 
      if(eddington_limit)dMsink_overdt(isink)=min(dMBHoverdt(isink),eddington_cap*dMEDoverdt(isink))
 

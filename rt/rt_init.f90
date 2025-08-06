@@ -418,6 +418,29 @@ SUBROUTINE read_rt_groups()
   ! in the case of RTZ, perform initialization after reading in group
   ! energies
 
+  ! Initialize the ionization energies
+  ! Loop over elements
+  ionEvs(1,1) = ionEv_HII
+  ionEvs(1,3) = 15.2d0 ! TODO(code): check this
+  ionEvs(2,1) = ionEv_HeII
+  ionEvs(2,2) = ionEv_HeIII
+  do iElement=1, n_elements
+     ! Check if we actually use the element
+     if (elements(iElement)%atomic_number.gt.0) then
+        ! Loop over ionization states
+        do iIon=1,elements(iElement)%n_ions-1 !loop over ionization states
+           if (iElement.eq.6)  ionEvs(iElement,iIon) = dE_carbon(iIon)
+           if (iElement.eq.7)  ionEvs(iElement,iIon) = dE_nitrogen(iIon)
+           if (iElement.eq.8)  ionEvs(iElement,iIon) = dE_oxygen(iIon)
+           if (iElement.eq.10) ionEvs(iElement,iIon) = dE_neon(iIon)
+           if (iElement.eq.12) ionEvs(iElement,iIon) = dE_magnesium(iIon)
+           if (iElement.eq.14) ionEvs(iElement,iIon) = dE_silicon(iIon)
+           if (iElement.eq.16) ionEvs(iElement,iIon) = dE_sulfur(iIon)
+           if (iElement.eq.26) ionEvs(iElement,iIon) = dE_iron(iIon)
+        end do ! End loop over ionization states
+     end if
+  end do ! End loop over elements
+
   ! Frist initialize the cross sections data
   call initialize_cross_sections()
 

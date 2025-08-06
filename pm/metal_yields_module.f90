@@ -432,9 +432,6 @@ FUNCTION get_pop3_lifetime_myr(mass) result(age_myr)
    age_gyr = 10d0**age_gyr
    age_myr = age_gyr * 1.d3
 
-   ! Hard coded
-   age_myr = 3.d-1
-
 END FUNCTION get_pop3_lifetime_myr
 !##############################################################################
 !##############################################################################
