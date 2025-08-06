@@ -1433,6 +1433,7 @@ SUBROUTINE rtz_updateRTGroups_CoolConstants(ilevel)
   sigec(:,:,:) = group_cse*rt_c_cgs(ilevel)        ! [cm3 s-1]
 
   !Photoheating rates for photons on ions
+  !HK note -- photoheating ignored for molecules (accounted for elsewhere)
   do iP = 1,nGroups
      do iE = 1,n_elements
         if (elements(iE)%atomic_number.gt.0) then 
@@ -1440,7 +1441,7 @@ SUBROUTINE rtz_updateRTGroups_CoolConstants(ilevel)
               PHrate(iP,iE,iI) =  eV2erg * &    ! See eq (19) in Aubert(08)
                  (sigec(iP,iE,iI) * group_egy(iP)  &
                  -signc(iP,iE,iI)*ionEvs(iE,iI))
-              PHrate(iP,iE,iI) = max(PHrate(iP,iE,iI),0d0)!Heating>0
+              PHrate(iP,iE,iI) = max(PHrate(iP,iE,iI),0d0) !Heating > 0
            end do
         end if
       end do ! End element loop
