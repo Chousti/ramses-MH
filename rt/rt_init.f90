@@ -166,7 +166,8 @@ SUBROUTINE read_rt_params(nml_ok)
        & ,rt_n_source, rt_u_source, rt_v_source, rt_w_source             &
        ! RT boundary (for boundary conditions)                           &
        & ,rt_n_bound,rt_u_bound,rt_v_bound,rt_w_bound                    &
-       & ,rt_AGN, rt_sink                                                
+       ! Sink RT parameters
+       & ,rt_AGN, rt_sink, rt_sink_central_cloud                                                
 
 
 
@@ -309,10 +310,12 @@ SUBROUTINE read_rt_groups()
 #ifdef RTZ
   use rtz_cooling_module
   use cross_sections_module
+  use collisional_ionization_module
 #endif
   use SED_module
   implicit none
   integer::i,igroup_HI=0, igroup_HII=0, igroup_HeII=0, igroup_HeIII=0
+  integer::iElement,iIon
 !-------------------------------------------------------------------------
   namelist/rt_groups/group_csn, group_cse, group_egy, spec2group         &
        & , groupL0, groupL1, kappaAbs, kappaSc, group_egy_AGNfrac

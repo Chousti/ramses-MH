@@ -228,6 +228,10 @@ subroutine create_cloud_from_sink
                     idp(indp)          = -isink
                     typep(indp)%family = FAM_CLOUD
                     typep(indp)%tag    = 0
+                    ! Tag the central cloud particle
+                    if (kk.eq.0 .and. jj.eq.0 .and. ii.eq.0) then
+                       typep(indp)%tag    = 1
+                    end if
                     levelp(indp)       = levelmin
                     if (rr<=rmass)then
                        ! check if direct_force is turned on
@@ -874,7 +878,7 @@ subroutine grow_sink(ilevel,on_creation)
               ! If it's a group of low mass stars, set the flag to -2
               if (evolution_flag(isink).eq.1) then
                  if (myid.eq.1) then
-                    write(*,*) "Sink ",isink," with mass ",msink_actual(isink) * scale_m/M_sun," raeched the main-sequence"
+                    write(*,*) "Sink ",isink," with mass ",msink_actual(isink) * scale_m/M_sun," reached the main-sequence"
                  end if
                  evolution_flag(isink) = 0
               else 
@@ -2287,6 +2291,9 @@ subroutine update_sink(ilevel)
   ! Set overlap mass to sink mass
   msum_overlap=msink
 
+  ! In the case where sinks represent individual stars
+  ! we do not merge them
+#ifndef INDIVIDUAL_SINK_STARS
   ! Check for overlapping sinks
   do isink=1,nsink-1
      if (msink(isink)>0.)then
@@ -2387,6 +2394,7 @@ subroutine update_sink(ilevel)
         end do
      end if
   end do
+#endif
 
   ! Store old xsink and fsink for the gradient descent timestep
   xsinkold=0.0

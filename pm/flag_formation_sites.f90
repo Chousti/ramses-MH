@@ -79,6 +79,12 @@ subroutine flag_formation_sites
 
   ! Block clumps whose centres are closer than twice R_accretion from existing sinks
   do j=1,nsink
+#ifdef INDIVIDUAL_SINK_STARS
+     ! Only block if sinks are actively accreting
+     if (evolution_flag(j).ne.1) then
+        cycle
+     end if
+#endif
      do i=1,npeaks
         rrel=xsink(j,1:ndim)-peak_pos(i,1:ndim)
         do idim=1,ndim
@@ -188,7 +194,7 @@ subroutine flag_formation_sites
         ok=ok.and.relevance(jj)>0
         ! Clump has to contain at least one cell
         ok=ok.and.n_cells(jj)>0
-        ! Clmup must have no existing sink
+        ! Clmup must have no existing (accreting) sink
         ok=ok.and.occupied(jj)==0
         ! Peak has to be dense enough
         ok=ok.and.max_dens(jj)>d_sink

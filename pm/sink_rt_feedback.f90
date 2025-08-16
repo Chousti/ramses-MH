@@ -58,6 +58,7 @@ SUBROUTINE sink_RT_feedback(ilevel, dt)
   !this array gathers the ionising flux by looping over stellar object
   !note that this array is local and therefore is not declared in pm_common
   real(dp),dimension(1:nsink,1:ngroups):: sink_ioni_flux
+  logical::ok_part=.false.
 !-------------------------------------------------------------------------
   if(.not.rt_advect)RETURN
   if(nsink .le. 0 ) return
@@ -82,7 +83,13 @@ SUBROUTINE sink_RT_feedback(ilevel, dt)
            do jpart = 1, npart1
               next_part = nextp(ipart)
               ! only sink cloud particles
-              if(idp(ipart) .lt. 0) then
+              ok_part = .false.
+              if (rt_sink_central_cloud) then
+                 ok_part = (typep(ipart)%family.eq.FAM_CLOUD) .and. (ok_part .and. typep(ipart)%tag.eq.1)
+              else
+                 ok_part = (idp(ipart).lt.0)
+              end if
+              if (ok_part) then
                  npart2 = npart2+1
               endif
               ipart = next_part
@@ -97,7 +104,14 @@ SUBROUTINE sink_RT_feedback(ilevel, dt)
            ! Loop over particles
            do jpart = 1, npart1
               next_part = nextp(ipart)
-              if(idp(ipart) .lt. 0) then
+              ! only sink cloud particles
+              ok_part = .false.
+              if (rt_sink_central_cloud) then
+                 ok_part = (typep(ipart)%family.eq.FAM_CLOUD) .and. (ok_part .and. typep(ipart)%tag.eq.1)
+              else
+                 ok_part = (idp(ipart).lt.0)
+              end if
+              if(ok_part) then
                  if(ig==0)then
                     ig=1
                     ind_grid(ig)=igrid
@@ -134,7 +148,7 @@ END SUBROUTINE sink_RT_feedback
 !*************************************************************************
 !*************************************************************************
 SUBROUTINE gather_ioni_flux(dt,sink_ioni_flux)
-! This routine is called by sink_RT_feedback is stellar objects are used
+! This routine is called by sink_RT_feedback if stellar objects are used
 ! It gathers the ionising flux on each sinks which is used to perform ionising radiation feedback
 
 ! sink_ioni_flux =>  the ionising flux of each sink
@@ -343,7 +357,7 @@ SUBROUTINE sink_RT_vsweep_stellar(ind_grid,ind_part,ind_grid_part,ng,np,dt,ileve
      end if
   end do
 
-  ! Compute parent cell adress
+  ! Compute parent cell address
   do j = 1, np
      if( ok(j) )then
         indp(j) = ncoarse + (icell(j)-1)*ngridmax + igrid(j)
@@ -360,8 +374,10 @@ SUBROUTINE sink_RT_vsweep_stellar(ind_grid,ind_part,ind_grid_part,ng,np,dt,ileve
         isink=-idp(ind_part(j))
         ! deposit the photons onto the grid
         do ig=1,ngroups
+         !   rtunew(indp(j),iGroups(ig))=rtunew(indp(j),iGroups(ig)) + &
+         !        sink_ioni_flux(isink,ig) * dt / dble(ncloud_sink) / vol_cgs / scale_Np
            rtunew(indp(j),iGroups(ig))=rtunew(indp(j),iGroups(ig)) + &
-                sink_ioni_flux(isink,ig) * dt / dble(ncloud_sink) / vol_cgs / scale_Np
+                sink_ioni_flux(isink,ig) * dt / vol_cgs / scale_Np
         end do
 
      endif
