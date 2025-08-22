@@ -264,6 +264,12 @@ subroutine stromgren_radius_refine(ind_cell,ok,ncell,ilevel)
   real(dp)::dens,tempe,etherm
   real(dp)::lam_HI,alpha,r_s,Q
   real(dp)::scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2
+#if NENER>0
+  integer::irad
+#endif
+#ifdef SOLVERmhd
+  real(dp)::emag
+#endif
 
   ! Get the unit conversions
   call units(scale_l,scale_t,scale_d,scale_v,scale_nH,scale_T2)
