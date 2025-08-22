@@ -85,7 +85,7 @@ SUBROUTINE sink_RT_feedback(ilevel, dt)
               ! only sink cloud particles
               ok_part = .false.
               if (rt_sink_central_cloud) then
-                 ok_part = (typep(ipart)%family.eq.FAM_CLOUD) .and. (ok_part .and. typep(ipart)%tag.eq.1)
+                 ok_part = (typep(ipart)%family.eq.FAM_CLOUD) .and. (typep(ipart)%tag.eq.1)
               else
                  ok_part = (idp(ipart).lt.0)
               end if
@@ -107,7 +107,7 @@ SUBROUTINE sink_RT_feedback(ilevel, dt)
               ! only sink cloud particles
               ok_part = .false.
               if (rt_sink_central_cloud) then
-                 ok_part = (typep(ipart)%family.eq.FAM_CLOUD) .and. (ok_part .and. typep(ipart)%tag.eq.1)
+                 ok_part = (typep(ipart)%family.eq.FAM_CLOUD) .and. (typep(ipart)%tag.eq.1)
               else
                  ok_part = (idp(ipart).lt.0)
               end if
