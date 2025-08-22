@@ -133,6 +133,10 @@ subroutine hydro_flag(ilevel)
            call jeans_length_refine(ind_cell,ok,ngrid,ilevel)
         endif
 
+        if(strom_refine(ilevel)>0.0)then
+           call stromgren_radius_refine(ind_cell,ok,ngrid,ilevel)
+        endif
+
         ! Apply geometry-based refinement criteria
         if(r_refine(ilevel)>-1.0)then
            ! Compute cell center in code units
