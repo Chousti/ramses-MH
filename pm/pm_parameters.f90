@@ -99,7 +99,7 @@ module pm_parameters
   real(dp) :: imf_m1 = 0.5d0
   real(dp) :: imf_m2 = 300.d0
   real(dp) :: imf_a1 = -1.3d0
-  real(dp) :: imf_a2 = -2.7d0
+  real(dp) :: imf_a2 = -2.3d0
 
   !!! Protostellar jets (following Cunningham+2011, STARFORGE: Grudic+2020)
   logical  :: protostellar_jet = .false. ! Whether to launch a jet during the protostellar phase

@@ -389,6 +389,11 @@ SUBROUTINE rtz_solve_cooling(T2, aexp, xion, nElement, nCO, &
       loopcnt=0 !; n_cool_cells=n_cool_cells+nCell     !             Statistics
       do while (nAct .gt. 0)      ! Iterate while there are still active cells
          loopcnt=loopcnt+1 !  ;   tot_cool_loopcnt=tot_cool_loopcnt+nAct
+         if (loopcnt.gt.100000) then
+            write(*,*)ilevel,rt_c_cgs(ilevel)
+            write(*,*) "Too high loopcnt",loopcnt
+            stop
+         end if
          nAct_next=0                     ! Active cells for the next iteration
          do ia=1,nAct                             ! Loop over the active cells
             i = indAct(ia)                        !                 Cell index
@@ -619,7 +624,7 @@ contains
 
           ! Deal with molecules separately
           if (elements(1)%atomic_number.gt.0 .and. isH2_rtz) then
-             if (isLW(igroup).eq.1.d0) then 
+             if (isLW(igroup).eq.1) then 
                 phAbs(igroup) = 0.5d0 * nElement_dep(1) * dXion(1, 3) * signc(igroup,1,3) * f_shd  ! s-1
              else
                 phAbs(igroup) = 0.5d0 * nElement_dep(1) * dXion(1, 3) * signc(igroup,1,3)
@@ -827,10 +832,10 @@ contains
        ! Photodissociation from the local radiation field
        if (rtz_include_photoionization.and.rt_advect) then
           do igroup=1,nGroups
-             if (isLW(igroup).eq.1.d0) then
+             if (isLW(igroup).eq.1) then
                 de_H2 = de_H2 + (dXion(1,3) * SUM(signc(igroup,1,3) * dNp * f_shd))
              else
-                de_H2 = de_H2 + (dXion(1,3) * SUM(signc(igroup,1,3) * dNp * f_shd))
+                de_H2 = de_H2 + (dXion(1,3) * SUM(signc(igroup,1,3) * dNp))
              end if  
           end do
        end if
@@ -1233,10 +1238,10 @@ contains
 #endif
     ! Now the dUs are really changes, not new values
     ! Update the timestep for the next iteration:
-   !  dt_rec = 0.5d0 * ddt(icell) / ((0.01d0 + fracMax)**0.5d0)
+    ! dt_rec = 0.5d0 * ddt(icell) / ((0.01d0 + fracMax)**0.5d0)
     dt_rec = 0.9d0 * ddt(icell) / ((0.07d0 + fracMax)**0.3d0)
-    dt_rec = min(dt_rec,1E12 * min(TK/100.0,1.0) * min((1.0/nElement_dep(1)),1.0) * min(sqrt(1.0/UV_background_G0),1.0))
-    dt_rec = min(dt_rec,rtz_max_cool_timestep)
+    ! dt_rec = min(dt_rec,1E12 * min(TK/100.0,1.0) * min((1.0/nElement_dep(1)),1.0) * min(sqrt(1.0/max(UV_background_G0,1.d-10)),1.0))
+    ! dt_rec = min(dt_rec,rtz_max_cool_timestep)
     dt_ok = .true.
     code=0
 
@@ -1428,6 +1433,7 @@ SUBROUTINE rtz_updateRTGroups_CoolConstants(ilevel)
   sigec(:,:,:) = group_cse*rt_c_cgs(ilevel)        ! [cm3 s-1]
 
   !Photoheating rates for photons on ions
+  !HK note -- photoheating ignored for molecules (accounted for elsewhere)
   do iP = 1,nGroups
      do iE = 1,n_elements
         if (elements(iE)%atomic_number.gt.0) then 
@@ -1435,7 +1441,7 @@ SUBROUTINE rtz_updateRTGroups_CoolConstants(ilevel)
               PHrate(iP,iE,iI) =  eV2erg * &    ! See eq (19) in Aubert(08)
                  (sigec(iP,iE,iI) * group_egy(iP)  &
                  -signc(iP,iE,iI)*ionEvs(iE,iI))
-              PHrate(iP,iE,iI) = max(PHrate(iP,iE,iI),0d0)!Heating>0
+              PHrate(iP,iE,iI) = max(PHrate(iP,iE,iI),0d0) !Heating > 0
            end do
         end if
       end do ! End element loop

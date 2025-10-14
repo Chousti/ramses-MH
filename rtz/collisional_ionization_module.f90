@@ -5,6 +5,9 @@ module collisional_ionization_module
 
   private  ! everything is private by default
   public :: collisional_ionization
+  public :: dE_carbon, dE_oxygen, dE_nitrogen
+  public :: dE_neon, dE_magnesium, dE_silicon
+  public :: dE_sulfur, dE_iron
 
   ! Carbon
   real(dp), parameter :: dE_carbon(6)  = [11.3d0, 24.4d0, 47.9d0, 64.5d0, 392.1d0, 490.0d0]

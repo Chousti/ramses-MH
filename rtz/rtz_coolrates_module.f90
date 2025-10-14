@@ -2359,7 +2359,7 @@ SUBROUTINE all_cooling(T, ne, aexp, element_number_densities, element_ion_fracti
     end if
 
     !////////////////////////////////////////////////////
-    !//           Calculate Heatint & Cooling          //
+    !//           Calculate Heating & Cooling          //
     !////////////////////////////////////////////////////
     
     !!!!!! Sum all of the cooling rates

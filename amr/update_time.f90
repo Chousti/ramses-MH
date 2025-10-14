@@ -106,6 +106,7 @@ subroutine update_time(ilevel)
 #ifdef SOLVERmhd
            write(*,'(" emag=",ES9.2)') emag_tot
 #endif
+           write(*,'(" Maximum current allowed level=",I2)') levelmax_current
            if(pic)then
               write(*,888)nstep,t,dt,aexp,&
                    & real(100.0D0*dble(used_mem_tot)/dble(ngridmax+1)),&

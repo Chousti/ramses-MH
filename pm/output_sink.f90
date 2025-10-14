@@ -9,7 +9,11 @@ subroutine output_sink_csv(filename)
   if(verbose)write(*,*)'Entering output_sink_csv'
 
   fileloc=TRIM(filename)
+#ifdef INDIVIDUAL_SINK_STARS
+  open(unit=123,file=TRIM(fileloc),form='formatted',status='replace', recl=5000)
+#else
   open(unit=123,file=TRIM(fileloc),form='formatted',status='replace', recl=500)
+#endif
   !======================
   ! Write sink properties
   !======================

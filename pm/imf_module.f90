@@ -3,7 +3,7 @@ MODULE imf_module
    use amr_parameters, only: dp
    implicit none
 
-   public :: sample_IMF_pop3, sample_IMF_pop2
+   public :: sample_IMF_pop3, sample_IMF_pop2, get_SNIa_prob
 CONTAINS
 
 FUNCTION sample_IMF_pop3(seed) result(mass)
@@ -100,6 +100,70 @@ FUNCTION sample_IMF_pop2(m0,m1,m2,a1,a2,group_mass,lp_mass,seed) result(my_mass)
    endif
 
 END FUNCTION sample_IMF_pop2
+
+FUNCTION get_SNIa_prob(m0,m1,m2,a1,a2,group_mass,star_age,star_msl,seed) result(is_SNIa)
+   ! Following https://iopscience.iop.org/article/10.3847/1538-4357/aa8b6e/pdf
+   ! where they get N_SNIa/M = 1.3e-3 with a delay time distribution of
+   ! t^-1.07
+   use amr_parameters, only: dp, h0
+   use constants
+   implicit none
+   real(dp), intent(in)::m0,m1,m2,a1,a2,group_mass
+   real(dp), intent(in)::star_age,star_msl
+   integer, intent(in)::seed
+   logical::is_SNIa
+   real(dp)::smooth_factor,total_mass,m_low
+   real(dp)::loc_rand,loc_rand2,prob,total_snia_prob
+   real(dp)::t0,tnow,tH
+   real(dp)::un_normalized_prob,normalized_prob,current_prob
+
+   is_SNIa = .false.
+
+   ! If we don't track low mass stars, then no SNIa
+   if (group_mass.gt.8.d0) then
+      return
+   end if
+
+   ! Get the power-law transition between the two regimes
+   smooth_factor = (m1**a1) / (m1**a2)   
+
+   ! Calculate the total mass in the IMF
+   total_mass = (1.d0/(a1 + 2.d0)) * ((m1**(a1 + 2.d0)) - (m0**(a1 + 2.d0)))
+   total_mass = total_mass + ( (smooth_factor/(a2 + 2.d0)) * ((m2**(a2 + 2.d0)) - (m1**(a2 + 2.d0))) )
+
+   ! Calculate the total number of stars within the SNIa mass range which we assume is 3 Msol - 8 Msol
+   m_low = MAX(group_mass,3.d0) ! However, we don't let degenerate star particles explode
+   total_SNIa_prob = (smooth_factor/(a2 + 1.d0)) * ((8.d0**(a2 + 1.d0)) - (m_low**(a2 + 1.d0)))
+
+   ! Number of possible SNIa progenitors per solar mass of stars
+   prob = (1.d0 / total_mass) * total_SNIa_prob
+
+   ! Check if this specific star will go SNIa
+   loc_rand = rand_from_seed(-2 * seed) ! Modify the seed so it's different from before
+
+   ! These stars will go SNIa --> now just need to sample the delay time distribution
+   if (loc_rand.le.(1.3d-3/prob)) then
+      t0 = star_msl   ! Main sequence lifetime of the star Myr
+      tnow = star_age ! Age of the star in Myr
+      tH = 1.0 / (h0 / (Mpc2cm / 1e5)) ! Hubble time in Myr
+      tH = tH / Myr2sec
+
+      ! Draw a random number --> always the same for all CPUs at all times
+      ! Offset so not all random numbers are the same
+      loc_rand2 = rand_from_seed(seed + 2345432)
+
+      ! Get the probability that at a given time the s
+      un_normalized_prob = (1.d0/(-0.07d0)) * ((tH**(-0.07d0)) - (t0**(-0.07d0)))
+      current_prob = (1.d0/(-0.07d0)) * ((tnow**(-0.07d0)) - (t0**(-0.07d0)))
+      normalized_prob = current_prob / un_normalized_prob
+
+      if (loc_rand2.lt.normalized_prob) then
+         is_SNIa = .true.
+      end if
+
+   end if 
+
+END FUNCTION get_SNIa_prob
 
 FUNCTION rand_from_seed(seed) result(r)
     use iso_fortran_env, only: int64, real64

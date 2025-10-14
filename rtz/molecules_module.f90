@@ -81,15 +81,15 @@ END FUNCTION alpha_H2_prim
 
 FUNCTION alpha_H2_dust(T, dust_to_gas_mass_ratio_over_mw) result(rate)
   ! Formation on dust
+  use rt_parameters, only: rtz_H2_clumping
   implicit none
 
   real(dp), intent(in) :: T, dust_to_gas_mass_ratio_over_mw
   real(dp) :: rate
-  real(dp) :: clumping_factor, T2
+  real(dp) :: T2
 
-  clumping_factor = 1.d0
   T2 = T / 100.d0
-  rate = dust_to_gas_mass_ratio_over_mw * (3.5d-17) * clumping_factor * sqrt(min(T2,1.d2))
+  rate = dust_to_gas_mass_ratio_over_mw * (3.5d-17) * rtz_H2_clumping * sqrt(min(T2,1.d2))
 
   rate = MAX(rate,1.d-100)
 
